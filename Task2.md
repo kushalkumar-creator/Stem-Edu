@@ -1,8 +1,9 @@
-# Tasks.md: Phase 2 (Intelligence, Immersion and Reach)
+# Tasks.md: Phase 2 (Intelligence, Immersion and Reach), Supabase edition
 
 **Project:** STEM learning platform for **CBSE Class 10 and Class 12** (Mathematics, Physics, Chemistry, Biology)
+**Backend stack change:** MongoDB Atlas and the custom JWT login are replaced by **Supabase** (Postgres database, Supabase Auth and `pgvector` for vector search). Setup details, SQL and code are in `SUPABASE_SETUP.md`.
 **Starts when:** Phase 1 (Tasks 0 to 11) is finished, deployed and working
-**Ends when:** every feature in the final feature list below works inside the same website, plus the mobile app and the offline mode
+**Ends when:** every feature in the final feature list below works inside the same website, plus the offline mode
 
 ---
 
@@ -14,6 +15,8 @@
 4. Task IDs look like `P2-3.4` (Phase 2, section 3, task 4). Do not renumber them; other tasks refer to them.
 5. Keep each task to **one sitting** (about 1 to 3 hours). If a task feels bigger, split it into new subtasks instead of skipping it.
 6. Order matters inside a section. Sections can overlap only where "Depends on" allows it.
+7. Secrets: the agent reads keys only from `process.env` (backend) or `import.meta.env` (frontend). It never prints or hardcodes key values. The variable names live in `backend/.env.example`.
+8. Database rule: every table that holds personal data has a `user_id` column and **Row Level Security (RLS)** enabled. The backend uses the Supabase service role key, which bypasses RLS, so every backend query on personal data must also filter by the verified user id.
 
 ### Legend
 
@@ -27,6 +30,12 @@
 ### Naming decision
 
 The AI character (earlier called "Chotu") is renamed **Saarthi** (Sanskrit for "guide / charioteer"). Saarthi is **one character** that works as both the **AI mentor** and the **24/7 doubt solver**. Wherever this file says Saarthi, it means that single character. The name can be changed in task P2-0.2 without affecting anything else.
+
+### Naming rules for the database
+
+- Tables and columns use `snake_case` (for example `chat_sessions`, `class_level`, `preferred_language`).
+- `class` is written `class_level` in the database to avoid keyword problems.
+- What this file used to call a "model" is now a "table". SQL files live in `backend/sql/` and are numbered (`001_init.sql`, `002_content.sql`, ...).
 
 ### Final feature list covered by this file
 
@@ -45,9 +54,8 @@ The AI character (earlier called "Chotu") is renamed **Saarthi** (Sanskrit for "
 | 11 | 24/7 AI doubt solver (Saarthi) | 3 |
 | 12 | Multi-board and multi-language support | 1 |
 | 13 | Offline part of the app (questions, lectures, notes) | 12 |
-| 14 | Mobile app | 13 |
 
-Not part of Phase 2 (left for later): sign language, SaaS, gamification, teacher dashboard, role-play lessons.
+Not part of Phase 2 (left for later): sign language, SaaS, gamification, teacher dashboard, role-play lessons, native mobile app (Android APK / Capacitor).
 
 ---
 
@@ -55,66 +63,79 @@ Not part of Phase 2 (left for later): sign language, SaaS, gamification, teacher
 
 - [ ] **P2-0.1 Confirm Phase 1 is really finished**
   - [ ] Auth, profile, lessons, notes, MCQ practice, Gemini summary, SVG diagrams, pendulum lab, admin panel all work on the deployed site
-  - [ ] Seed data exists (4 chapters, 10+ MCQs each) and is backed up
+  - [ ] Seed data exists (4 chapters, 10+ MCQs each) and is backed up (export from the current database as JSON before the Supabase move)
   - [ ] Phase 1 code is merged to `main` and tagged `v1.0`
   - [ ] Create a new branch `phase2` for all work in this file
 - [ ] **P2-0.2 Lock the decisions (write answers into `Design.md`)**
   - [ ] Final name of the AI character (default: **Saarthi**)
   - [ ] Classes: **10 and 12** (CBSE). Confirm the chapter list for each subject and class
   - [ ] Languages: English + Hindi + **one regional language** (user to choose which one)
-  - [ ] Database & Vector storage choice: **Supabase PostgreSQL with pgvector** (replaces MongoDB; native SQL similarity search via pgvector and unified relational schema, see P2-2.4)
-  - [ ] Mobile app approach (default: Capacitor wrapping the PWA, see P2-13.1)
-  - [ ] Hosting for videos (default: Cloudinary free tier, Supabase Storage, or unlisted YouTube, see P2-10.4)
+  - [ ] Database, login and vector storage: **Supabase** (Postgres + Supabase Auth + `pgvector`), see P2-0.6 and P2-2.4
+  - [ ] Hosting for videos (default: Cloudinary free tier, unlisted YouTube, or Supabase Storage, see P2-10.4)
 - [ ] **P2-0.3 Update the planning files before coding**
-  - [ ] Update `PRD.md`: classes 10 and 12, Phase 2 feature list, Virtual Learning section, Supabase database migration
-  - [ ] Update `Design.md`: new pages, new data models (Supabase SQL tables & pgvector), new API routes (list below)
+  - [ ] Update `PRD.md`: classes 10 and 12, Phase 2 feature list, Virtual Learning section
+  - [ ] Update `Design.md`: new pages, new database tables, new API routes (list below)
   - [ ] New pages: `/mentor` (Saarthi), `/virtual-learning`, `/virtual-learning/:topic`, `/labs`, `/labs/:id`, `/videos`, `/community`, `/notes/handwriting`, `/offline`
-  - [ ] New models (Supabase SQL tables): `chunks` (with embedding vector), `documents`, `chat_sessions`, `chat_messages`, `memory_facts`, `videos`, `labs`, `virtual_topics`, `translation_strings`
+  - [ ] New tables: `chunks`, `documents`, `chat_sessions`, `chat_messages`, `memory_facts`, `videos`, `labs`, `virtual_topics`, `translation_strings` (plus `profiles` from P2-0.6)
   - [ ] New routes (grouped): `/api/rag/*`, `/api/mentor/*`, `/api/summary/*`, `/api/mcq/*`, `/api/notes/*`, `/api/videos/*`, `/api/labs/*`, `/api/virtual/*`
 - [ ] **P2-0.4 Accounts, keys and limits** ⚠️
   - [ ] Gemini API key stored only in backend `.env` (never in frontend code)
-  - [ ] Supabase URL and Service Role Key stored only in backend `.env` (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`)
-  - [ ] Check the current Gemini and Supabase free-tier limits (500MB DB, pgvector, 1GB storage) and write them in `Design.md`
+  - [ ] Supabase service role (secret) key stored only in backend `.env`; frontend gets only the project URL and the anon (publishable) key
+  - [ ] Check the current Gemini free-tier limits and the current Supabase free-tier limits (database size, storage, bandwidth, pausing of inactive projects) and write them in `Design.md`
   - [ ] Add a per-user rate limit on every AI route (`express-rate-limit`) ✍️
   - [ ] Add a simple usage counter so free-tier limits are not exceeded during demo
 - [ ] **P2-0.5 Folder structure additions**
-  - [ ] `backend/src/rag/`, `backend/src/mentor/`, `backend/src/jobs/`
+  - [ ] `backend/src/rag/`, `backend/src/mentor/`, `backend/src/jobs/`, `backend/src/lib/` (Supabase admin client), `backend/src/middleware/` (auth)
+  - [ ] `backend/sql/` for numbered SQL migration files
+  - [ ] `frontend/src/lib/` (Supabase browser client)
   - [ ] `frontend/src/features/virtual-learning/`, `frontend/src/features/labs/`, `frontend/src/features/mentor/`, `frontend/src/offline/`
   - [ ] `content/` folder (not deployed) for source PDFs, scripts and video storyboards
+- [ ] **P2-0.6 Supabase project and Auth setup** 🆕 (do this before P2-1; details in `SUPABASE_SETUP.md`)
+  - [ ] Create the Supabase project, save the database password, note the project URL, anon key and service role key
+  - [ ] Run `backend/sql/001_init.sql` in the Supabase SQL Editor: `vector` extension, `profiles` table, signup trigger, `chunks` table, `match_chunks` function, RLS policies
+  - [ ] Enable the Email provider; turn off "Confirm email" for development only; set Site URL and redirect URLs
+  - [ ] Optional: enable Google login (Google Cloud OAuth client)
+  - [ ] Install `@supabase/supabase-js` in backend and frontend; remove `mongoose`, `bcryptjs` and `jsonwebtoken` from the backend
+  - [ ] Create `frontend/src/lib/supabaseClient.js`, `backend/src/lib/supabaseAdmin.js` and the `requireAuth` / `requireAdmin` middleware
+  - [ ] Replace Phase 1 register, login, logout and "current user" code with Supabase Auth; send `Authorization: Bearer <access_token>` from the frontend to the backend
+  - [ ] Move the Phase 1 seed data (chapters, lessons, MCQs) from MongoDB JSON into the new tables with a one-time script, then delete the script and the old `MONGODB_URI`
+  - [ ] Make the first admin by setting `role = 'admin'` on your row in `profiles`
+  - [ ] Tag the branch `v1.1-supabase` when login, lessons and MCQs work again on Supabase
 
 ---
 
 ## P2-1. Multi-board and multi-language support (foundation, do this first)
 
 Reason it comes first: board and language change how content is stored, so every later feature depends on it.
+🔗 Depends on P2-0.6.
 
-- [ ] **P2-1.1 Content model upgrade** ✍️
-  - [ ] Add `board` (CBSE now; ICSE, State boards later), `class` (10, 12), `subject`, `language` to Chapter, Lesson, MCQ, Video and Chunk models
-  - [ ] Write a migration script that tags all Phase 1 seed data as `board: CBSE`, `language: en`
-  - [ ] Add compound indexes on `(board, class, subject, language)`
+- [ ] **P2-1.1 Content table upgrade** ✍️
+  - [ ] Add columns `board` (CBSE now; ICSE, State boards later), `class_level` (10, 12), `subject`, `language` to the `chapters`, `lessons`, `mcqs`, `videos` and `chunks` tables
+  - [ ] Write a SQL migration file (`backend/sql/00x_multiboard.sql`) that tags all Phase 1 seed data as `board = 'CBSE'`, `language = 'en'`
+  - [ ] Add composite Postgres indexes on `(board, class_level, subject, language)`
   - [ ] Update admin forms so every content item must choose board, class, subject, language
 - [ ] **P2-1.2 Add Class 12 and complete Class 10 content skeleton**
   - [ ] Create chapter lists for Class 10 and Class 12 for all four subjects (titles and order only)
   - [ ] Mark which chapters will get full content, MCQs, video and virtual learning topics first
   - [ ] Seed at least 3 chapters per subject per class with lesson text (more can be added later)
 - [ ] **P2-1.3 User preferences** ✍️
-  - [ ] Profile stores `board`, `class`, `preferredLanguage`
+  - [ ] The `profiles` table stores `board`, `class_level`, `preferred_language`
   - [ ] Every content API filters by the user's profile unless overridden
-  - [ ] "Change board / class / language" screen in settings
+  - [ ] "Change board / class / language" screen in settings (updates the user's own `profiles` row)
 - [ ] **P2-1.4 UI translation (i18n)** 🆕
   - [ ] Install `react-i18next` and explain how translation files work
   - [ ] Move all hard-coded UI text into `en.json`
   - [ ] Create `hi.json` and the chosen regional language file
-  - [ ] Language switcher in the navbar, choice saved in profile and localStorage
+  - [ ] Language switcher in the navbar, choice saved in `profiles.preferred_language` and localStorage
   - [ ] Check long words and non-Latin fonts do not break layouts (add Noto Sans fonts)
 - [ ] **P2-1.5 Content translation**
   - [ ] Decide approach: admin-entered translations first, Gemini-assisted draft translation second
-  - [ ] Add a "Translate this lesson" admin button that asks Gemini for a draft, saved as `status: draft`
+  - [ ] Add a "Translate this lesson" admin button that asks Gemini for a draft, saved with `status = 'draft'`
   - [ ] Human review screen: admin approves or edits before a translated lesson goes live
   - [ ] Fallback rule: if a translation is missing, show English with a small "not available in your language" note
   - [ ] Translate at least 2 chapters per subject into Hindi and the regional language
 - [ ] **P2-1.6 Multi-board readiness check**
-  - [ ] Add one small non-CBSE sample chapter to prove the model works (can be removed later)
+  - [ ] Add one small non-CBSE sample chapter to prove the tables work (can be removed later)
   - [ ] Confirm RAG and Saarthi filter by board (verified again in P2-2.8)
 
 ---
@@ -136,22 +157,20 @@ Goal: Saarthi and the summary tool answer from CBSE material and from the studen
   - [ ] Extract text from PDFs (try `pdf-parse` or `pdfjs-dist`; use OCR in P2-6.6 for scanned pages)
   - [ ] Clean text: remove headers, footers, page numbers, broken hyphenation
   - [ ] Chunk by headings first, then by size (start with about 500 tokens and 50 token overlap)
-  - [ ] Attach metadata to every chunk: `board, class, subject, chapter, page, language, source, type` (`textbook | notes | question`)
-  - [ ] Save chunks in Supabase `chunks` table (linking to `documents` table)
-  - [ ] Make the script re-runnable without duplicating chunks (hash each chunk)
-- [ ] **P2-2.4 Embeddings and vector store (Supabase pgvector)** 🆕
-  - [ ] Choose the embedding model (Gemini `text-embedding-004`, 768 dimensions) and note the vector size
-  - [ ] Enable `vector` extension in Supabase (`create extension if not exists vector;`)
-  - [ ] Define the `chunks` table with `id uuid`, `document_id uuid`, `content text`, `embedding vector(768)`, and metadata columns
-  - [ ] Create the HNSW vector index in Supabase: `create index on chunks using hnsw (embedding vector_cosine_ops);`
-  - [ ] Embed all chunks in batches using Gemini API, respecting rate limits, with retry and progress log
-  - [ ] Store an `embedding_model` column so chunks can be re-embedded later if the model changes
-- [ ] **P2-2.5 Retrieval service (Supabase RPC match_chunks)** ✍️
-  - [ ] Create a PostgreSQL function `match_chunks(query_embedding vector(768), match_count int, filter_board text, filter_class int, filter_subject text, filter_user_id uuid)` using cosine distance `<=>`
-  - [ ] Function `retrieve(query, filters, k)` that embeds the query via Gemini and invokes `supabase.rpc('match_chunks', ...)`
+  - [ ] Attach metadata to every chunk: `board, class_level, subject, chapter, page, language, source, type` (`textbook | notes | question | video`)
+  - [ ] Save chunks in the `chunks` table (through the service role client)
+  - [ ] Make the script re-runnable without duplicating chunks (the `content_hash` column is `unique`; use upsert on it)
+- [ ] **P2-2.4 Embeddings and vector store** 🆕
+  - [ ] Choose the embedding model (Gemini embedding model, check current name in docs), set its output size to match the `vector(768)` column (or change the column size in SQL if you choose another size), and note it in `Design.md`
+  - [ ] Vector store: **Supabase Postgres with `pgvector`** (same database as the rest of the app). Write 3 reasons and one alternative (Chroma, Qdrant) in `Design.md`
+  - [ ] Confirm the HNSW index (`vector_cosine_ops`) and the metadata filter columns (`board, class_level, subject, language, user_id`) exist (created in `001_init.sql`); check the Supabase docs for current vector size and index limits
+  - [ ] Embed all chunks in batches, respecting rate limits, with retry and progress log
+  - [ ] Store the `embedding_model` column so chunks can be re-embedded later if the model changes
+- [ ] **P2-2.5 Retrieval service** ✍️
+  - [ ] Function `retrieve(query, filters, k)` that embeds the query and calls the `match_chunks` SQL function with `supabaseAdmin.rpc('match_chunks', {...})`
   - [ ] Always filter by board and class; filter by subject when known
-  - [ ] Add a minimum similarity score threshold (e.g. 0.65); return "nothing relevant found" below it
-  - [ ] Optional improvement: hybrid search (Postgres full-text search `tsvector` + `pgvector`) and re-ranking
+  - [ ] Add a minimum similarity score (`min_similarity` argument); return "nothing relevant found" below it
+  - [ ] Optional improvement: hybrid search (Postgres full-text search + vector) and re-ranking
   - [ ] Unit tests with 10 known questions and the chunk each should return
 - [ ] **P2-2.6 Answer generation with citations** ✍️
   - [ ] Write the prompt template: role, rules, retrieved context, question, answer format
@@ -160,19 +179,19 @@ Goal: Saarthi and the summary tool answer from CBSE material and from the studen
   - [ ] Keep answers at CBSE level for the student's class (simple language)
   - [ ] Reply in the student's preferred language (🔗 P2-1.3)
 - [ ] **P2-2.7 User-based RAG (student's own notes)** 🆕
-  - [ ] Students can upload text, PDF, or photo notes (photos handled in P2-6.6)
-  - [ ] Each upload is chunked and embedded with `userId` in metadata
-  - [ ] Retrieval merges two pools: CBSE chunks (shared) and the student's own chunks (private)
-  - [ ] Privacy check: one user can never retrieve another user's chunks (write a test for this)
-  - [ ] "My knowledge base" page: list, preview and delete uploaded notes (deleting also removes its chunks and vectors)
+  - [ ] Students can upload text, PDF, or photo notes (photos handled in P2-6.6); original files may be kept in a private Supabase Storage bucket
+  - [ ] Each upload is chunked and embedded with `user_id` set on every chunk
+  - [ ] Retrieval merges two pools: CBSE chunks (shared, `user_id` is null) and the student's own chunks (private, `user_id` = the verified user), already handled by `match_chunks` through `p_user_id`
+  - [ ] Privacy check: one user can never retrieve another user's chunks. Write tests for both layers: the API (user A calls retrieve, gets none of user B's chunks) and RLS (a client signed in as user A with the anon key cannot select user B's rows)
+  - [ ] "My knowledge base" page: list, preview and delete uploaded notes (deleting also removes its chunks and vectors, and the stored file)
 - [ ] **P2-2.8 Evaluate and tune**
   - [ ] Build a test set of 30 questions (about 8 per subject) with expected chapter
   - [ ] Measure: did the right chunk appear in the top 3 or top 5?
   - [ ] Try 2 chunk sizes and 2 values of `k`; record results in `docs/rag-eval.md`
   - [ ] Confirm board and class filtering works (a Class 10 question must not return Class 12 chunks)
 - [ ] **P2-2.9 Admin RAG tools**
-  - [ ] Admin page to upload a source PDF, pick metadata, and start ingestion
-  - [ ] Show ingestion status and chunk count per document
+  - [ ] Admin page to upload a source PDF, pick metadata, and start ingestion (admin routes use `requireAdmin`)
+  - [ ] Show ingestion status and chunk count per document (from the `documents` table)
   - [ ] Re-index and delete document buttons
 
 ---
@@ -186,18 +205,19 @@ Goal: Saarthi and the summary tool answer from CBSE material and from the studen
   - [ ] Scope: only STEM and study help for CBSE 10 and 12; politely refuses unrelated or unsafe topics
   - [ ] Two modes: **Doubt mode** (quick answer with steps) and **Mentor mode** (study plan, revision advice, weak topics)
   - [ ] Write the system prompt and keep it in one file `backend/src/mentor/systemPrompt.js`
-- [ ] **P2-3.2 Chat data models** ✍️
-  - [ ] `ChatSession` (userId, title, mode, subject, createdAt)
-  - [ ] `ChatMessage` (sessionId, role, content, sources, createdAt)
-  - [ ] `MemoryFact` (userId, type, text, subject, importance, createdAt, lastUsedAt)
+- [ ] **P2-3.2 Chat tables** ✍️
+  - [ ] `chat_sessions` (id, user_id, title, mode, subject, created_at)
+  - [ ] `chat_messages` (id, session_id, user_id, role, content, sources as `jsonb`, created_at)
+  - [ ] `memory_facts` (id, user_id, type, text, subject, importance, embedding `vector(768)`, created_at, last_used_at)
+  - [ ] RLS on all three: a user can only read and delete their own rows (`user_id = auth.uid()`); `on delete cascade` from `auth.users`
 - [ ] **P2-3.3 Chat API** ✍️
   - [ ] `POST /api/mentor/sessions` create session
   - [ ] `POST /api/mentor/sessions/:id/messages` send a message and get the reply
   - [ ] `GET /api/mentor/sessions` and `GET /api/mentor/sessions/:id` list and load history
   - [ ] `DELETE /api/mentor/sessions/:id`
-  - [ ] Auth required on all routes; rate limits from P2-0.4 applied
+  - [ ] `requireAuth` middleware (Supabase token check) on all routes; every query filtered by `req.user.id`; rate limits from P2-0.4 applied
 - [ ] **P2-3.4 Prompt building with context**
-  - [ ] Combine: system prompt + student profile (class, board, language) + relevant memories + last N messages + retrieved chunks (🔗 P2-2.5)
+  - [ ] Combine: system prompt + student profile (class, board, language from `profiles`) + relevant memories + last N messages + retrieved chunks (🔗 P2-2.5)
   - [ ] Count tokens and trim history so the prompt never goes over the limit
   - [ ] Log the final prompt in development mode for debugging
 - [ ] **P2-3.5 Streaming replies** 🆕
@@ -206,11 +226,11 @@ Goal: Saarthi and the summary tool answer from CBSE material and from the studen
   - [ ] Handle network errors and show a "Try again" button
 - [ ] **P2-3.6 Context storing (memory)** 🆕 ✍️
   - [ ] **Short-term memory:** last N messages of the session (done in P2-3.4)
-  - [ ] **Long-term memory:** after each session, ask Gemini to extract facts (weak topics, goals, exam date, preferred explanation style) and save them as `MemoryFact`
+  - [ ] **Long-term memory:** after each session, ask Gemini to extract facts (weak topics, goals, exam date, preferred explanation style) and save them in `memory_facts`
   - [ ] **Session summary:** when a session gets long, store a summary and use it instead of old messages
-  - [ ] Retrieve the top relevant memories for each new message (by subject and by embedding similarity)
+  - [ ] Retrieve the top relevant memories for each new message (by subject and by embedding similarity using `pgvector`, with a small SQL function like `match_memories`)
   - [ ] "What Saarthi remembers about me" page: list, edit, delete memories (privacy and control)
-  - [ ] Toggle in settings: "Let Saarthi remember me" (off means no memory is written)
+  - [ ] Toggle in settings: "Let Saarthi remember me" (`profiles.saarthi_memory_enabled`; off means no memory is written)
 - [ ] **P2-3.7 Chat UI**
   - [ ] Chat page `/mentor`, mobile first, with Saarthi avatar and quick-start chips ("Explain a concept", "Solve a numerical", "Quiz me")
   - [ ] Render markdown and maths (KaTeX) in answers
@@ -227,8 +247,9 @@ Goal: Saarthi and the summary tool answer from CBSE material and from the studen
   - [ ] Saarthi can generate a quick 5-question quiz on request (uses P2-5.2)
 - [ ] **P2-3.10 24/7 reliability** ⚠️
   - [ ] Handle Gemini errors, quota exhaustion and timeouts with friendly messages
+  - [ ] Handle Supabase errors and a paused or unreachable free-tier project with a friendly message
   - [ ] Fallback: if the LLM fails, show the best matching chunks as a plain "From your textbook" answer
-  - [ ] Uptime check and error logging (free tier tools such as UptimeRobot and basic logs)
+  - [ ] Uptime check and error logging (free tier tools such as UptimeRobot and basic logs); the uptime ping also keeps a free Supabase project active
   - [ ] Cache repeated identical questions for a short time to save quota
 - [ ] **P2-3.11 Safety and quality**
   - [ ] Refusal tests: off-topic, unsafe, exam-cheating or personal-data requests
@@ -251,7 +272,7 @@ Phase 1 already has a basic Gemini summary. This section upgrades it. 🔗 Depen
   - [ ] Summarise a lesson, a whole chapter (using retrieved chunks), or the student's own uploaded note
   - [ ] Long input: split into parts, summarise each, then summarise the summaries
 - [ ] **P2-4.4 Saving and caching**
-  - [ ] Save generated summaries in a `Summary` collection (user, source, options, text)
+  - [ ] Save generated summaries in a `summaries` table (user_id, source, options as `jsonb`, text) with RLS
   - [ ] Reuse a cached summary when the same options are requested again
   - [ ] "My summaries" list with copy, delete and "send to Notes" buttons
 - [ ] **P2-4.5 Summary to flashcards** (small bonus)
@@ -265,20 +286,20 @@ Phase 1 already has a basic Gemini summary. This section upgrades it. 🔗 Depen
 
 - [ ] **P2-5.1 Question bank growth**
   - [ ] Add MCQs for Class 10 and 12 chapters (at least 15 per chapter for chapters that have lessons)
-  - [ ] Tag each MCQ with `chapter, topic, difficulty, board, class, language`
+  - [ ] Tag each MCQ with `chapter, topic, difficulty, board, class_level, language`
   - [ ] Admin bulk import (CSV or JSON) with validation and error report
 - [ ] **P2-5.2 AI-generated MCQs from CBSE content** 🆕
   - [ ] Generate N questions from retrieved chunks of a chapter in a fixed JSON format
   - [ ] Validate the JSON (4 options, exactly one correct answer, explanation present)
-  - [ ] Store as `status: pending`; only approved questions appear to students
+  - [ ] Store with `status = 'pending'`; only `approved` questions appear to students (enforce this in the query and in an RLS read policy)
   - [ ] Admin review screen: approve, edit, reject
 - [ ] **P2-5.3 Test modes** ✍️
   - [ ] Chapter test, mixed subject test, timed test (CBSE-style paper pattern as a stretch)
   - [ ] Scoring logic and negative marking option written by the user
   - [ ] Show explanation after each question or at the end (setting)
 - [ ] **P2-5.4 Results and weak topics** ✍️
-  - [ ] Store attempts per question (correct, time taken)
-  - [ ] Results page with score, topic-wise accuracy and a simple chart
+  - [ ] Store attempts per question in an `attempts` table (user_id, mcq_id, correct, time_taken, created_at) with RLS
+  - [ ] Results page with score, topic-wise accuracy (SQL `group by` query or view) and a simple chart
   - [ ] "Weak topics" list feeding Saarthi (🔗 P2-3.9)
 - [ ] **P2-5.5 "Explain this answer" button** that sends the question and the student's option to Saarthi
 - [ ] **P2-5.6 Offline readiness**
@@ -292,7 +313,7 @@ Meaning (assumed from the earlier context, confirm in P2-0.2): turn typed text i
 The website `texttohandwriting.com` is only an example of the idea; build your own version.
 
 - [ ] **P2-6.1 Notes editor basics**
-  - [ ] Notes page with create, edit, delete, search, tags by subject and chapter
+  - [ ] Notes page with create, edit, delete, search, tags by subject and chapter (`notes` table with `user_id` and RLS)
   - [ ] Rich text or markdown editor with maths support (KaTeX)
   - [ ] Notes saved per user and available to RAG (🔗 P2-2.7)
 - [ ] **P2-6.2 Study the idea of text-to-handwriting** 🆕
@@ -308,7 +329,7 @@ The website `texttohandwriting.com` is only an example of the idea; build your o
 - [ ] **P2-6.4 Export**
   - [ ] Download as PNG for one page
   - [ ] Download as PDF for multiple pages (`jsPDF` or similar)
-  - [ ] "Save to my notes" stores the rendered pages and the original text
+  - [ ] "Save to my notes" stores the rendered pages (in a private Supabase Storage bucket) and the original text (in the `notes` table)
 - [ ] **P2-6.5 Maths and diagrams in handwriting** (stretch)
   - [ ] Render simple formulas in a handwriting-like font
   - [ ] Allow inserting a diagram image from the interactive diagrams section
@@ -329,7 +350,7 @@ Phase 1 introduced SVG interaction. Here the library grows. 🔗 Depends on P2-1
 
 - [ ] **P2-7.1 Diagram component system** ✍️
   - [ ] One reusable `<InteractiveDiagram>` component: SVG, hotspots with labels, zoom and pan, tooltip, quiz mode
-  - [ ] Diagrams described as JSON data (shapes, labels, hotspots) so admin can add more without code
+  - [ ] Diagrams described as JSON data (shapes, labels, hotspots; stored in a `jsonb` column of a `diagrams` table) so admin can add more without code
 - [ ] **P2-7.2 Biology diagrams**
   - [ ] Plant cell and animal cell
   - [ ] Human digestive system (Class 10)
@@ -380,10 +401,11 @@ A new top-level section of the website: **Virtual Learning**. It holds interacti
 - [ ] **P2-8.0.1 Plan the section**
   - [ ] Open each reference page and write notes: what the student can do, what is explained, what controls exist
   - [ ] For each of the 9 topics write a short spec in `Design.md`: learning goal, CBSE chapter link (Class 10 or 12), controls, what is shown
-- [ ] **P2-8.0.2 Data model and routes** ✍️
-  - [ ] `VirtualTopic` model: slug, subject, class, board, title, description, chapterId, type (`3d | graph | molecule`), config JSON, thumbnail, status
+- [ ] **P2-8.0.2 Table and routes** ✍️
+  - [ ] `virtual_topics` table: slug, subject, class_level, board, title, description, chapter_id, type (`3d | graph | molecule`), config as `jsonb`, thumbnail, status
+  - [ ] `topic_progress` table (user_id, topic_id, completed, completed_at) with RLS
   - [ ] `GET /api/virtual` (list, filter by subject and class) and `GET /api/virtual/:slug`
-  - [ ] Seed all 9 topics as `draft` until each one is finished
+  - [ ] Seed all 9 topics with `status = 'draft'` until each one is finished
 - [ ] **P2-8.0.3 Landing page `/virtual-learning`**
   - [ ] Four subject tabs (Maths, Physics, Chemistry, Biology) with topic cards (thumbnail, title, class)
   - [ ] Search and class filter
@@ -403,8 +425,8 @@ A new top-level section of the website: **Virtual Learning**. It holds interacti
   - [ ] Slider component with live value and reset
   - [ ] Formula display with KaTeX that updates with the sliders
 - [ ] **P2-8.0.7 Quiz and progress for topics**
-  - [ ] Each topic has its own 3 to 5 MCQs stored in the MCQ bank (tag `virtualTopic`)
-  - [ ] Save "topic completed" when the student finishes the quiz
+  - [ ] Each topic has its own 3 to 5 MCQs stored in the `mcqs` table (column `virtual_topic_id`)
+  - [ ] Save "topic completed" in `topic_progress` when the student finishes the quiz
   - [ ] Show completion on topic cards
 
 ### P2-8.1 Biology: Heart and circulatory system
@@ -607,7 +629,8 @@ Different from Section 8: Virtual Learning explains a concept; **Labs** are step
 Phase 1 delivered the simple pendulum. 🔗 Depends on P2-8.0.5.
 
 - [ ] **P2-9.1 Lab framework** ✍️
-  - [ ] `Lab` model: title, subject, class, aim, apparatus list, steps, observation table template, expected result, viva questions
+  - [ ] `labs` table: title, subject, class_level, aim, apparatus list, steps, observation table template, expected result, viva questions (lists and templates stored as `jsonb`)
+  - [ ] `lab_attempts` table (user_id, lab_id, observations as `jsonb`, result, created_at) with RLS
   - [ ] Lab page layout: aim, apparatus, 3D bench, steps panel, observation table, result and conclusion, viva questions
   - [ ] Step system: the student must do steps in order; wrong action shows a hint
   - [ ] Save lab attempts and show them on the profile
@@ -648,24 +671,25 @@ User note: "just give dummy videos". Real AI-generated videos are produced with 
 - [ ] **P2-10.2 Produce the videos** ⚠️
   - [ ] Try a PDF/text-to-video tool (for example pdftovideo.ai) using the chapter notes as input and note the free-tier limits and any watermark
   - [ ] If the tool is not usable, make dummy videos from slides plus narration (any screen recorder or video editor) so the platform can be tested
-  - [ ] Label placeholder videos clearly as `dummy: true` in the data so they can be replaced later
+  - [ ] Label placeholder videos clearly as `dummy = true` in the data so they can be replaced later
   - [ ] Export in web-friendly MP4 (H.264), 720p, small size; also make a 360p version for slow networks
   - [ ] Create a thumbnail and subtitles file (`.vtt`) for each video
-- [ ] **P2-10.3 Data model and API** ✍️
-  - [ ] `Video` model: title, subject, class, board, language, chapterId, url, thumbnail, duration, subtitles, dummy flag, size
+- [ ] **P2-10.3 Table and API** ✍️
+  - [ ] `videos` table: title, subject, class_level, board, language, chapter_id, url, thumbnail, duration, subtitles, dummy flag, size
+  - [ ] `video_progress` table (user_id, video_id, position_seconds, updated_at) with RLS
   - [ ] `GET /api/videos` (filters) and `GET /api/videos/:id`
   - [ ] Admin upload and edit form (with the metadata)
 - [ ] **P2-10.4 Hosting** ⚠️
-  - [ ] Choose a host: Cloudinary free tier, unlisted YouTube embeds, or Cloudflare R2 / S3. Write the reason and the limit
+  - [ ] Choose a host: Cloudinary free tier, unlisted YouTube embeds, **Supabase Storage** (check its current file size and bandwidth limits first), or Cloudflare R2 / S3. Write the reason and the limit
   - [ ] Do not store large video files in the Git repository
   - [ ] Add the video URLs through the admin panel
 - [ ] **P2-10.5 Video pages**
   - [ ] `/videos` list with filters (subject, class, language)
   - [ ] Player page with play speed, quality choice (360p/720p), subtitles on/off
   - [ ] "Chapter videos" block on each lesson page
-  - [ ] Remember watch progress per user (resume where they left)
+  - [ ] Remember watch progress per user (resume where they left, saved in `video_progress`)
 - [ ] **P2-10.6 Video + Saarthi**
-  - [ ] Store the video transcript as RAG chunks (`type: video`) so Saarthi can answer from it and cite the timestamp
+  - [ ] Store the video transcript as RAG chunks (`type = 'video'`) so Saarthi can answer from it and cite the timestamp
   - [ ] "Ask about this video" button passes the transcript context
 - [ ] **P2-10.7 Offline readiness**
   - [ ] Decide the offline lecture format: downloadable 360p video or audio plus transcript (completed in P2-12.8)
@@ -696,7 +720,7 @@ User note: "just give dummy videos". Real AI-generated videos are produced with 
   - [ ] Simple bot with `discord.js` that posts a "Question of the day" MCQ
   - [ ] Optional `/ask` command using the same RAG and Saarthi service (with rate limits)
 - [ ] **P2-11.6 Optional account linking** (stretch)
-  - [ ] "Login with Discord" or link Discord username to the profile
+  - [ ] "Login with Discord" through the Discord provider in Supabase Auth (Authentication → Providers), or link a Discord username to the profile
   - [ ] Auto-assign class role based on profile
 
 ---
@@ -704,7 +728,7 @@ User note: "just give dummy videos". Real AI-generated videos are produced with 
 ## P2-12. Offline mode (questions, lectures, notes) 🆕
 
 🔗 Depends on P2-5, P2-6, P2-7, P2-8, P2-9 and P2-10 (to know what to store).
-Approach: turn the website into a **PWA** (Progressive Web App) with a service worker and IndexedDB. This also becomes the base of the mobile app in Section 13.
+Approach: turn the website into a **PWA** (Progressive Web App) with a service worker and IndexedDB. This also makes the website installable on phones, so no separate mobile app is needed.
 
 - [ ] **P2-12.1 Learn PWA basics (for viva)**
   - [ ] Write `docs/pwa.md`: manifest, service worker, cache vs IndexedDB, online/offline events, background sync
@@ -716,6 +740,7 @@ Approach: turn the website into a **PWA** (Progressive Web App) with a service w
 - [ ] **P2-12.3 Caching strategy** ✍️
   - [ ] App shell (HTML, JS, CSS, fonts, icons): precache
   - [ ] API data for lessons, questions, notes: network-first with cache fallback or stale-while-revalidate (choose per route and justify)
+  - [ ] Never cache Supabase Auth requests or responses that carry tokens
   - [ ] Images and thumbnails: cache-first with size limits
   - [ ] Cache versioning and cleanup of old caches
 - [ ] **P2-12.4 Local database (IndexedDB)** 🆕
@@ -724,11 +749,11 @@ Approach: turn the website into a **PWA** (Progressive Web App) with a service w
 - [ ] **P2-12.5 Offline questions**
   - [ ] "Download for offline" per chapter downloads its MCQs into IndexedDB
   - [ ] Tests run entirely from local data and scoring works offline (the same scoring code as online)
-  - [ ] Attempts are stored locally and synced when the network returns
+  - [ ] Attempts are stored locally and synced to the Supabase `attempts` table when the network returns
 - [ ] **P2-12.6 Offline notes**
   - [ ] Notes can be viewed, created and edited offline
   - [ ] Handwritten-style pages (images) cached
-  - [ ] Sync queue with conflict rule (last edit wins, show a note when a conflict was resolved)
+  - [ ] Sync queue with conflict rule (last edit wins using `updated_at`, show a note when a conflict was resolved)
 - [ ] **P2-12.7 Offline lessons and light interactive content**
   - [ ] Lesson text, diagrams (SVG/JSON) and small virtual-learning topics (maths, molecule examples) cached on request
   - [ ] Big 3D models are marked "online only" or downloadable with a size warning
@@ -740,103 +765,88 @@ Approach: turn the website into a **PWA** (Progressive Web App) with a service w
   - [ ] Online/offline indicator and a banner when offline
   - [ ] `/offline` page listing everything downloaded
   - [ ] Disable or label features that need the internet (Saarthi, RAG, translation); show helpful text instead of errors
+  - [ ] An already signed-in user can open downloaded content offline (the Supabase session is stored in the browser); when the token has expired, show downloaded content anyway and refresh the session once back online
 - [ ] **P2-12.10 Sync** ✍️
   - [ ] Background sync (where supported) or sync on reconnect for attempts and notes
-  - [ ] Avoid duplicates using client-generated IDs
+  - [ ] Avoid duplicates using client-generated UUIDs as the primary key (Postgres `uuid` columns), with upsert on insert
 - [ ] **P2-12.11 Test offline**
   - [ ] Use browser DevTools offline mode and airplane mode on a real phone
   - [ ] Checklist: open the app, take a test, read a note, open a lesson, play a downloaded lecture, then go online and confirm sync
 
 ---
 
-## P2-13. Mobile app
+## P2-13. Mobile app (REMOVED from Phase 2)
 
-🔗 Depends on P2-12 (PWA). The app should feel like a real app, not just a bookmark.
+Decision: the project stays a **website for now**. There is no Android app, Capacitor project, APK or store release in this phase. The ID P2-13 is kept only so the other section numbers do not change. Nothing here needs to be done.
 
-- [ ] **P2-13.1 Decide the approach (write in `Design.md`)**
-  - [ ] Options: (a) installable PWA only, (b) **Capacitor** wrapping the existing React app (default; reuse the same code), (c) React Native / Expo (rewrite)
-  - [ ] Write 3 reasons for the final choice (time, code reuse, features needed)
-- [ ] **P2-13.2 Mobile polish of the web app**
-  - [ ] Safe areas, bottom navigation on small screens, touch-sized buttons
-  - [ ] Splash screen, app icon and theme colours
-  - [ ] Back button behaviour and pull-to-refresh where useful
-- [ ] **P2-13.3 Build the app** 🆕
-  - [ ] Add Capacitor to the project and create the Android project (`android/`)
-  - [ ] Point the app to the production API (environment config)
-  - [ ] Build a debug APK and install it on a real phone
-- [ ] **P2-13.4 Native features**
-  - [ ] Camera for scanning notes and doubts (🔗 P2-3.8, P2-6.6)
-  - [ ] File access for downloads and handwriting export
-  - [ ] Optional: push notifications for study reminders and new content
-- [ ] **P2-13.5 Test on devices**
-  - [ ] Test on at least one low-end Android phone and one newer phone
-  - [ ] Test slow network and offline mode inside the app
-  - [ ] Check 3D topics, labs and video playback inside the app webview
-- [ ] **P2-13.6 Release**
-  - [ ] Build a signed release APK/AAB
-  - [ ] Share the APK via the website download link
-  - [ ] Optional: Google Play internal testing track (needs a developer account and fee)
-  - [ ] iOS is out of scope unless a Mac and a developer account are available
+- Phones are still supported through the browser: pages are mobile first, and the offline mode in P2-12 (PWA) makes the website installable.
+- If a native app is wanted later, it becomes a new phase after Phase 2 is finished.
 
 ---
 
 ## P2-14. Admin panel updates
 
 - [ ] **P2-14.1 Content management for new features**
+  - [ ] Admin access is checked through `profiles.role = 'admin'` (`requireAdmin` middleware on the backend; admin pages hidden for other roles)
   - [ ] Manage Virtual Learning topics (status, config, quiz questions)
   - [ ] Manage Labs (steps, apparatus, expected values)
   - [ ] Manage Videos (upload metadata, dummy flag, transcript)
   - [ ] Manage RAG documents (🔗 P2-2.9)
   - [ ] Review queues: AI-generated MCQs (🔗 P2-5.2), draft translations (🔗 P2-1.5), reported Saarthi answers (🔗 P2-3.11)
 - [ ] **P2-14.2 Basic analytics**
-  - [ ] Counts: users, Saarthi questions per day, most used topics and labs, most asked subjects
-  - [ ] AI usage and quota status panel
+  - [ ] Counts (SQL queries or views): users, Saarthi questions per day, most used topics and labs, most asked subjects
+  - [ ] AI usage and quota status panel, plus a Supabase usage note (database size and storage against the free-tier limits)
 
 ---
 
 ## P2-15. Testing, security, performance and deployment
 
 - [ ] **P2-15.1 Security checks** ⚠️
-  - [ ] All AI keys only on the server; check the frontend bundle contains no secrets
-  - [ ] Validate and size-limit all uploads (type, size) and scan filenames
+  - [ ] All AI keys and the Supabase service role key only on the server; check the frontend bundle contains no secrets (search the built files for the key prefix)
+  - [ ] RLS is enabled on every table with user data; run a check query listing tables where RLS is off
+  - [ ] Validate and size-limit all uploads (type, size) and scan filenames; Supabase Storage buckets for user files are private with per-user folder policies
   - [ ] Protect against prompt injection from uploaded notes (treat retrieved text as data, not instructions) and write a test
-  - [ ] User data isolation tests (notes, chats, memories, chunks)
+  - [ ] User data isolation tests (notes, chats, memories, chunks), through the API and through RLS
   - [ ] CORS, helmet and rate limiting reviewed
+  - [ ] Auth settings reviewed: email confirmation turned back on, password rules, redirect URLs limited to your real domains
 - [ ] **P2-15.2 Privacy**
   - [ ] Privacy page explaining what Saarthi stores and why
-  - [ ] "Delete my data" button removing chats, memories, notes, chunks and vectors
+  - [ ] "Delete my data" button removing chats, memories, notes, chunks and vectors (`on delete cascade` from `auth.users`; the backend deletes the account with `supabaseAdmin.auth.admin.deleteUser(id)` and removes the user's Storage files)
   - [ ] Extra care for students under 18 (no unnecessary personal data)
 - [ ] **P2-15.3 Automated tests**
   - [ ] Unit tests for scoring, retrieval, ray and physics formulas, trig and conic functions
-  - [ ] API tests for the main routes
-  - [ ] One end-to-end test of the main flow (login, open lesson, ask Saarthi, take MCQ) with Playwright or Cypress
+  - [ ] API tests for the main routes (including 401 without a token and 403 for non-admins)
+  - [ ] One end-to-end test of the main flow (login, open lesson, ask Saarthi, take MCQ) with Playwright or Cypress, using a dedicated test user
 - [ ] **P2-15.4 Performance**
   - [ ] Lighthouse run on the main pages and fix big issues
   - [ ] Code splitting for Three.js, labs and virtual topics
   - [ ] Compress images, models and videos
-  - [ ] Database indexes checked for common queries
+  - [ ] Postgres indexes checked for common queries (use `explain analyze` on slow ones)
 - [ ] **P2-15.5 Accessibility and usability**
   - [ ] Keyboard navigation, readable contrast, alt text, text-size option
   - [ ] Test with 3 real students (Class 10 or 12) and note feedback
 - [ ] **P2-15.6 Deployment**
-  - [ ] Update environment variables on the host (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`)
-  - [ ] Deploy backend and frontend; check Supabase pgvector HNSW index and database connection in production
+  - [ ] Update environment variables on the host (Supabase URL, anon key, service role key, Gemini key, others from `.env.example`)
+  - [ ] Run all `backend/sql/*.sql` files, in order, on the production Supabase project (or confirm the same project is used) and check the `vector` extension and HNSW index exist
+  - [ ] Add the deployed frontend URL to Supabase Authentication → URL Configuration
+  - [ ] Deploy backend and frontend
   - [ ] Set up error monitoring and uptime checks
-  - [ ] Backup plan for the database and `content/`
+  - [ ] Backup plan for the database (Supabase backups or scheduled `pg_dump`; check what the free tier includes) and `content/`
 - [ ] **P2-15.7 Documentation and demo**
-  - [ ] Update `README.md` with setup steps and screenshots
-  - [ ] Architecture diagram covering RAG, Saarthi, offline sync and the app
-  - [ ] Demo script of 5 minutes (Virtual Learning, a lab, Saarthi with citations, offline mode, app on phone)
-  - [ ] Viva sheet: 25 questions and answers covering RAG, embeddings, memory, PWA, Three.js, i18n and security
+  - [ ] Update `README.md` with setup steps (including Supabase setup and SQL files) and screenshots
+  - [ ] Architecture diagram covering RAG, Saarthi, Supabase (Auth, Postgres, pgvector), offline sync and the website
+  - [ ] Demo script of 5 minutes (Virtual Learning, a lab, Saarthi with citations, offline mode, website on a phone)
+  - [ ] Viva sheet: 25 questions and answers covering RAG, embeddings, memory, PWA, Three.js, i18n, Supabase Auth, RLS and security
   - [ ] Tag release `v2.0`
 
 ---
 
 ## Final acceptance checklist (Phase 2 is done only when all are `[x]`)
 
+- [ ] Login, signup and logout work through Supabase Auth, and the app no longer uses MongoDB or custom JWT code
 - [ ] A student can pick **CBSE, Class 10 or 12, and a language**, and all content follows that choice
 - [ ] Saarthi answers CBSE doubts at any time, with sources, in the chosen language, and remembers the student across sessions (with the ability to view and delete memory)
-- [ ] RAG works with both CBSE content and the student's own notes, and user data stays private
+- [ ] RAG works with both CBSE content and the student's own notes, and user data stays private (verified by tests on both the API and RLS)
 - [ ] Gemini summary has length/style options and works on lessons and notes
 - [ ] MCQs include AI-generated, admin-approved questions, timed tests and weak-topic results
 - [ ] Typed text can be turned into handwriting-style pages (PNG/PDF), and photographed handwritten notes can be read by OCR
@@ -846,21 +856,20 @@ Approach: turn the website into a **PWA** (Progressive Web App) with a service w
 - [ ] At least one video per subject plays on the site (dummy videos allowed), with subtitles and progress saving
 - [ ] The Discord community is set up and linked from the site
 - [ ] Questions, lectures and notes work offline and sync when back online
-- [ ] The Android app installs and runs the full website features
 - [ ] Security, privacy, performance and deployment tasks are finished and the demo and viva sheet are ready
 
 ---
 
 ## Appendix A. Difficulty guide (hardest first)
 
-1. CBSE RAG pipeline and user-based RAG (new concepts: chunking, embeddings, vector search, evaluation)
+1. CBSE RAG pipeline and user-based RAG (new concepts: chunking, embeddings, vector search with pgvector, evaluation)
 2. Saarthi memory (context storing) and prompt building
-3. Offline mode with sync (service worker, IndexedDB, conflicts)
+3. Offline mode with sync (service worker, IndexedDB, conflicts, auth sessions)
 4. 3D models and animations for the Virtual Learning section (asset creation, performance on phones)
 5. 3D labs with step logic
 6. Conic cone-slicing and ray-optics simulations (maths and visuals together)
 7. Handwriting renderer and OCR
-8. Mobile app build and device testing
+8. Supabase Auth, SQL tables and Row Level Security (new concepts: policies, service role vs anon key)
 9. Multi-language content
 10. AI video production (tool limits)
 11. Discord community (easy, mostly setup)
@@ -871,15 +880,18 @@ Approach: turn the website into a **PWA** (Progressive Web App) with a service w
 - **Content volume:** two classes x four subjects is a lot; ship a few good chapters per subject first, then add more
 - **3D assets:** good free models are limited; plan time for Blender or searching for properly licensed models
 - **Licences:** textbooks, 3D models, fonts and videos each have terms; record them in `content/credits.md`
-- **Free-tier limits:** Gemini quota, Supabase storage & PostgreSQL database (500MB DB with native pgvector, 1GB storage buckets), video hosting and bandwidth
+- **Free-tier limits:** Gemini quota, Supabase (database size including vectors, storage, bandwidth, and pausing of inactive projects), video hosting and bandwidth
+- **Key safety:** the Supabase service role key bypasses all RLS; if it ever leaks (for example on GitHub), reset it in the Supabase dashboard immediately
 - **Low-end phones:** 3D and video must have low-quality modes
 - **Accuracy:** AI answers and AI-generated MCQs must be checked by a human before students rely on them
-- **Time:** course sections to finish by 1 January and December exams; start Phase 2 sections only after Phase 1 is deployed, and take Sections 1 to 5 first
+- **Time:** course sections to finish by 1 January and December exams; start Phase 2 sections only after Phase 1 is deployed on Supabase, and take Sections 1 to 5 first
 
 ## Appendix C. Useful repos and references (remind the user when relevant)
 
 - `Arindam200/awesome-ai-apps`: examples of LLM, RAG, agent and MCP apps (use for Sections 2 and 3)
 - `public-apis/public-apis`: free APIs (for example science and chemistry data sources, relevant to Section 8.7)
+- Supabase docs (supabase.com/docs): Auth, Row Level Security, `pgvector` and Storage guides (use for P2-0.6, P2-2.4 and P2-2.7)
+- `SUPABASE_SETUP.md` in this project: keys, SQL, env files and code for the Supabase move
 - Reference sites for Virtual Learning: `https://iamtechartist.com/demos/` and the topic pages listed in Section 8; `https://molview.org/` for the chemistry viewer idea
 - Idea site for handwriting: `https://texttohandwriting.com/` (example only; build your own)
 - Idea site for AI videos: `pdftovideo.ai` (example only; any tool is fine)
