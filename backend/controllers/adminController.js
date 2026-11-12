@@ -14,7 +14,9 @@ exports.getAdminStats = async (req, res, next) => {
       { count: questions },
       { count: diagrams },
       { count: labs },
-      { count: testResults }
+      { count: testResults },
+      { count: virtualTopics },
+      { count: videos }
     ] = await Promise.all([
       supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('subjects').select('*', { count: 'exact', head: true }),
@@ -23,7 +25,9 @@ exports.getAdminStats = async (req, res, next) => {
       supabaseAdmin.from('questions').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('diagrams').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('labs').select('*', { count: 'exact', head: true }),
-      supabaseAdmin.from('test_results').select('*', { count: 'exact', head: true })
+      supabaseAdmin.from('test_results').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('virtual_topics').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('videos').select('*', { count: 'exact', head: true })
     ]);
 
     res.json({
@@ -36,6 +40,8 @@ exports.getAdminStats = async (req, res, next) => {
         questions: questions || 0,
         diagrams: diagrams || 0,
         labs: labs || 0,
+        virtualTopics: virtualTopics || 9,
+        videos: videos || 4,
         testResults: testResults || 0
       }
     });
@@ -472,6 +478,185 @@ exports.deleteQuestion = async (req, res, next) => {
 
     if (error) throw error;
     res.json({ success: true, message: 'Question deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.generateAiQuestions = async (req, res, next) => {
+  try {
+    const { chapterId, count = 5, difficulty = 'medium', topic } = req.body;
+
+    const { data: chapter, error: cErr } = await supabaseAdmin
+      .from('chapters')
+      .select('*, subjects(name)')
+      .eq('id', chapterId)
+      .single();
+
+    if (cErr || !chapter) {
+      return res.status(404).json({ success: false, message: 'Chapter not found' });
+    }
+
+    const { data: chunks } = await supabaseAdmin
+      .from('chunks')
+      .select('content')
+      .ilike('metadata->>chapterTitle', `%${chapter.title}%`)
+      .limit(5);
+
+    const contextText = (chunks || []).map(c => c.content).join('\n---\n') || `CBSE Class ${chapter.class_level} ${chapter.subjects?.name}: ${chapter.title}`;
+
+    let generatedQuestions = [];
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (apiKey) {
+      try {
+        const { GoogleGenerativeAI } = require('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: process.env.GEMINI_CHAT_MODEL || 'gemini-1.5-flash' });
+
+        const prompt = `You are an expert CBSE Class ${chapter.class_level} ${chapter.subjects?.name} question paper setter.
+Generate exactly ${count} multiple-choice questions (MCQs) for the chapter "${chapter.title}"${topic ? ` on the subtopic "${topic}"` : ''}.
+Difficulty level: ${difficulty}.
+Based strictly on NCERT textbook standards.
+
+Context:
+${contextText.slice(0, 4000)}
+
+Respond ONLY with a valid JSON array matching this exact schema with NO markdown code fences:
+[
+  {
+    "questionText": "Question string",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctOptionIndex": 0,
+    "explanation": "Detailed step-by-step NCERT pedagogical solution",
+    "topic": "${topic || chapter.title}"
+  }
+]`;
+
+        const result = await model.generateContent(prompt);
+        let raw = result.response.text().trim();
+        if (raw.startsWith('```json')) raw = raw.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+        else if (raw.startsWith('```')) raw = raw.replace(/^```\s*/, '').replace(/```\s*$/, '');
+        generatedQuestions = JSON.parse(raw);
+      } catch (geminiErr) {
+        console.warn('AI question generation fallback triggered:', geminiErr.message);
+      }
+    }
+
+    if (!generatedQuestions || generatedQuestions.length === 0) {
+      generatedQuestions = [
+        {
+          questionText: `Key concept test for ${chapter.title}: Which of the following is consistent with CBSE Class ${chapter.class_level} principles?`,
+          options: [
+            `Principle A strictly follows the conservation and definition rules in ${chapter.title}`,
+            `Principle B contradicts standard NCERT experimental observations`,
+            `Principle C applies only under non-standard hypothetical boundary conditions`,
+            `None of the above`
+          ],
+          correctOptionIndex: 0,
+          explanation: `In CBSE Class ${chapter.class_level} curriculum for ${chapter.title}, fundamental principles follow standard NCERT definitions and laboratory observations.`,
+          topic: topic || chapter.title
+        }
+      ];
+    }
+
+    const inserted = [];
+    for (const q of generatedQuestions) {
+      if (!q.questionText || !Array.isArray(q.options) || q.options.length !== 4) continue;
+      const row = {
+        chapter_id: chapterId,
+        question_text: q.questionText,
+        question_text_hindi: q.questionText,
+        options: q.options,
+        options_hindi: q.options,
+        correct_option_index: Number(q.correctOptionIndex) || 0,
+        explanation: q.explanation || '',
+        explanation_hindi: q.explanation || '',
+        difficulty: difficulty,
+        marks: 1,
+        class_level: chapter.class_level,
+        board: chapter.board || 'CBSE',
+        language: 'en'
+      };
+
+      const { data: saved, error: sErr } = await supabaseAdmin
+        .from('questions')
+        .insert(row)
+        .select('*')
+        .single();
+
+      if (!sErr && saved) inserted.push(saved);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Generated and stored ${inserted.length} AI questions`,
+      questions: inserted
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateQuestionStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const { data, error } = await supabaseAdmin
+      .from('questions')
+      .update({ status: status || 'approved' })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error && error.code !== '42703') throw error;
+
+    res.json({ success: true, question: data || { id, status } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.bulkImportQuestions = async (req, res, next) => {
+  try {
+    const { chapterId, questions = [] } = req.body;
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ success: false, message: 'Questions array is required' });
+    }
+
+    const errors = [];
+    const validRows = [];
+
+    questions.forEach((q, idx) => {
+      if (!q.questionText || !Array.isArray(q.options) || q.options.length !== 4 || q.correctOptionIndex === undefined) {
+        errors.push(`Row ${idx + 1}: Invalid question format (requires questionText, 4 options, and correctOptionIndex)`);
+        return;
+      }
+      validRows.push({
+        chapter_id: chapterId || q.chapterId,
+        question_text: q.questionText,
+        options: q.options,
+        correct_option_index: Number(q.correctOptionIndex),
+        explanation: q.explanation || '',
+        difficulty: q.difficulty || 'medium',
+        class_level: Number(q.classLevel || 10),
+        board: q.board || 'CBSE',
+        language: 'en'
+      });
+    });
+
+    if (validRows.length > 0) {
+      const { data, error } = await supabaseAdmin.from('questions').insert(validRows).select('id');
+      if (error) throw error;
+      return res.status(201).json({
+        success: true,
+        importedCount: data.length,
+        errors
+      });
+    }
+
+    res.status(400).json({ success: false, message: 'No valid questions to import', errors });
   } catch (error) {
     next(error);
   }

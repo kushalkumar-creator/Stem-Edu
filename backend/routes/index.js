@@ -12,6 +12,9 @@ const adminRoutes = require('./adminRoutes');
 const ragRoutes = require('./ragRoutes');
 const mentorRoutes = require('./mentorRoutes');
 const virtualRoutes = require('./virtualRoutes');
+const notesRoutes = require('./notesRoutes');
+const videoRoutes = require('./videoRoutes');
+const communityRoutes = require('./communityRoutes');
 const { aiRateLimiter } = require('../middleware/rateLimiter');
 
 const { getProfile, updateProfile } = require('../controllers/authController');
@@ -49,6 +52,15 @@ router.use('/labs', labRoutes);
 
 // Virtual Learning 3D Topics route (/api/virtual/*)
 router.use('/virtual', virtualRoutes);
+
+// Notes & Handwriting routes (/api/notes/*)
+router.use('/notes', notesRoutes);
+
+// Video learning routes (/api/videos/*)
+router.use('/videos', videoRoutes);
+
+// Community hub routes (/api/community/*)
+router.use('/community', communityRoutes);
 
 // RAG Knowledge Base routes (/api/rag/*)
 router.use('/rag', aiRateLimiter, ragRoutes);

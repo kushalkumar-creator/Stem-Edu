@@ -11,3 +11,4 @@ router.get('/:slug', optionalAuth, virtualController.getTopicBySlug);
 router.post('/:slug/progress', requireAuth, virtualController.recordProgress);
 
 module.exports = router;
+

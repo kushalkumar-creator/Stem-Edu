@@ -274,9 +274,134 @@ On a unit circle where $r = 1$:
         explanation: "According to the fundamental Pythagorean identity, sin²θ + cos²θ = 1 for any real angle θ."
       }
     ]
+  },
+
+  // 7. PHYSICS: Newton's Laws of Motion
+  {
+    slug: 'newtons-laws',
+    subject: 'physics',
+    class_level: 10,
+    board: 'CBSE',
+    title: "Newton's Laws of Motion & Momentum Recoil",
+    title_hindi: 'न्यूटन के गति के नियम और संवेग संरक्षण',
+    description: "Explore the 3 fundamental laws of classical mechanics: Inertia & friction, dynamic F = ma acceleration, and action-reaction pairs.",
+    description_hindi: 'जड़त्व, F=ma त्वरण तथा क्रिया-प्रतिक्रिया नियमों का प्रत्यक्ष परीक्षण करें।',
+    type: '3d',
+    thumbnail: '/assets/simulations/physics.png',
+    status: 'published',
+    config: {
+      defaultForce: 20,
+      defaultMass: 4
+    },
+    notes: `### Newton's Three Laws of Classical Mechanics
+1. **First Law (Inertia):** A body continues in its state of rest or uniform motion in a straight line unless acted upon by an external net unbalanced force. Inertia depends directly on mass ($I \\propto m$).
+2. **Second Law ($F = ma$):** The rate of change of linear momentum is directly proportional to applied force ($F = \\frac{dp}{dt} = m \\cdot a$).
+3. **Third Law (Action & Reaction):** To every action there is always an equal and opposite reaction ($F_{AB} = -F_{BA}$). Forces always occur in pairs acting on two different bodies simultaneously.`,
+    quiz: [
+      {
+        question: "A net force of 20 N acts on a cart of mass 4 kg. What is the acceleration produced?",
+        options: ["80 m/s²", "5 m/s²", "16 m/s²", "0.2 m/s²"],
+        correctIndex: 1,
+        explanation: "By Newton's 2nd Law, a = F / m = 20 N / 4 kg = 5 m/s²."
+      },
+      {
+        question: "Why do action and reaction forces not cancel each other out?",
+        options: ["They act on different bodies", "They are in the same direction", "One force occurs after the other", "They have different magnitudes"],
+        correctIndex: 0,
+        explanation: "Action and reaction forces never cancel because they act simultaneously on two different bodies (e.g. cart 1 pushes cart 2, cart 2 pushes cart 1)."
+      }
+    ]
+  },
+
+  // 8. BIOLOGY: Breathing and Respiration
+  {
+    slug: 'breathing-and-respiration',
+    subject: 'biology',
+    class_level: 10,
+    board: 'CBSE',
+    title: 'Breathing & Alveolar Gas Exchange Mechanism',
+    title_hindi: 'श्वसन क्रियाविधि और कूपिका गैस विनिमय',
+    description: 'Observe pulmonary ventilation mechanisms: Diaphragm flattening on inhalation vs dome relaxation on exhalation, and microscopic O₂/CO₂ diffusion in alveoli.',
+    description_hindi: 'फेफड़ों की श्वसन क्रिया तथा कूपिकाओं में ऑक्सीजन-कार्बन डाइऑक्साइड विनिमय का अन्वेषण करें।',
+    type: '3d',
+    thumbnail: '/assets/simulations/lungs.png',
+    status: 'published',
+    config: {
+      defaultBpm: 16
+    },
+    notes: `### Mechanism of Pulmonary Ventilation (CBSE Class 10)
+- **Inhalation (Active):**
+  1. External intercostal muscles contract $\\rightarrow$ Rib cage lifts upward and outward.
+  2. Diaphragm contracts and flattens downward.
+  3. Thoracic cavity volume increases $\\rightarrow$ Intrapulmonary pressure falls below atmospheric pressure.
+  4. Air rushes into lungs.
+- **Exhalation (Passive):**
+  1. Intercostal muscles and diaphragm relax (diaphragm returns to dome shape).
+  2. Thoracic volume decreases $\\rightarrow$ Pressure rises, expelling air.
+- **Alveolar Gas Exchange:** Oxygen diffuses across the ultra-thin 1-cell thick alveolar-capillary membrane into hemoglobin in red blood cells.`,
+    quiz: [
+      {
+        question: "What happens to the diaphragm during inhalation?",
+        options: ["It relaxes and curves into a dome", "It contracts and flattens downward", "It expands outward towards ribs", "It remains motionless"],
+        correctIndex: 1,
+        explanation: "During inhalation, the diaphragm contracts and flattens downwards, increasing thoracic volume and decreasing internal air pressure to pull air in."
+      },
+      {
+        question: "Why are the walls of alveoli extremely thin (one-cell thick) and richly supplied with blood capillaries?",
+        options: ["To store glycogen", "To provide rapid diffusion of gases (O₂ and CO₂)", "To produce digestive enzymes", "To maintain high blood pressure"],
+        correctIndex: 1,
+        explanation: "The single-cell squamous epithelium ensures a minimal diffusion distance for efficient gaseous exchange between air and blood capillaries."
+      }
+    ]
+  },
+
+  // 9. BIOLOGY: Skeleton and Muscles
+  {
+    slug: 'skeleton-and-muscles',
+    subject: 'biology',
+    class_level: 11,
+    board: 'CBSE',
+    title: 'Human Skeletal Framework & Muscle Antagonism',
+    title_hindi: 'मानव कंकाल तंत्र और विरोधी पेशी युगल',
+    description: 'Examine 13 anatomical landmarks of the human skeleton and muscles. Manipulate elbow joint angle to understand antagonistic contraction of biceps vs triceps.',
+    description_hindi: '13 कंकाल-पेशी अंगों का अध्ययन करें तथा कोहनी के जोड़ पर बाइसेप्स व ट्राइसेप्स की कार्यप्रणाली समझें।',
+    type: '3d',
+    thumbnail: '/assets/simulations/skeleton.png',
+    status: 'published',
+    config: {
+      defaultAngle: 90
+    },
+    notes: `### Locomotion and Muscular Movement (CBSE Syllabus)
+- **Antagonistic Muscle Pairs:** Skeletal muscles can only pull (contract); they cannot push. Therefore, joints operate using antagonistic pairs:
+  - **Flexion:** Biceps brachii contracts (shortens and thickens) while Triceps brachii relaxes.
+  - **Extension:** Triceps brachii contracts to pull the forearm straight while Biceps brachii relaxes.
+- **Key Bone Landmarks:**
+  - **Upper Limb:** Humerus (arm), Radius & Ulna (forearm).
+  - **Lower Limb:** Femur (thigh, longest bone), Patella (kneecap sesamoid bone), Tibia & Fibula (shank).
+  - **Joints:** Hinge joint (elbow, knee - 1 plane movement), Ball & Socket (shoulder, hip - 360° rotation).`,
+    quiz: [
+      {
+        question: "During elbow flexion (bending the arm), what are the states of the Biceps and Triceps muscles?",
+        options: [
+          "Biceps relaxes, Triceps contracts",
+          "Biceps contracts, Triceps relaxes",
+          "Both muscles contract simultaneously",
+          "Both muscles relax simultaneously"
+        ],
+        correctIndex: 1,
+        explanation: "In an antagonistic pair during flexion, the agonist (biceps) contracts to bend the joint, while the antagonist (triceps) relaxes to allow movement."
+      },
+      {
+        question: "Which is the longest and strongest bone in the human body?",
+        options: ["Humerus", "Tibia", "Femur", "Radius"],
+        correctIndex: 2,
+        explanation: "The femur (thigh bone) is the longest, heaviest, and strongest bone in the human skeleton."
+      }
+    ]
   }
 ];
 
 module.exports = {
   virtualTopicsData
 };
+

@@ -86,3 +86,4 @@ create policy "own summaries insert" on public.summaries for insert with check (
 
 drop policy if exists "own summaries delete" on public.summaries;
 create policy "own summaries delete" on public.summaries for delete using (auth.uid() = user_id);
+

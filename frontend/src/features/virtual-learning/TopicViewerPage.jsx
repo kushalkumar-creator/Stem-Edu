@@ -5,6 +5,11 @@ import RayOpticsSimulation from './RayOpticsSimulation';
 import MoleculeViewerSimulation from './MoleculeViewerSimulation';
 import ConicSectionsSimulation from './ConicSectionsSimulation';
 import HeartCirculationSimulation from './HeartCirculationSimulation';
+import WavesSoundSimulation from './WavesSoundSimulation';
+import TrigUnitCircleSimulation from './TrigUnitCircleSimulation';
+import NewtonLawsSimulation from './NewtonLawsSimulation';
+import BreathingRespirationSimulation from './BreathingRespirationSimulation';
+import SkeletonMusclesSimulation from './SkeletonMusclesSimulation';
 
 export default function TopicViewerPage() {
   const { topicSlug } = useParams();
@@ -94,6 +99,16 @@ export default function TopicViewerPage() {
         return <ConicSectionsSimulation />;
       case 'heart-and-circulation':
         return <HeartCirculationSimulation />;
+      case 'waves-and-sound':
+        return <WavesSoundSimulation />;
+      case 'trigonometry-unit-circle':
+        return <TrigUnitCircleSimulation />;
+      case 'newtons-laws':
+        return <NewtonLawsSimulation />;
+      case 'breathing-and-respiration':
+        return <BreathingRespirationSimulation />;
+      case 'skeleton-and-muscles':
+        return <SkeletonMusclesSimulation />;
       default:
         return <RayOpticsSimulation />;
     }
@@ -303,3 +318,4 @@ export default function TopicViewerPage() {
     </div>
   );
 }
+

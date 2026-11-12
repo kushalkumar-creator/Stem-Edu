@@ -27,6 +27,9 @@ router.delete('/lessons/:id', adminController.deleteLesson);
 // Questions CRUD
 router.get('/questions', adminController.getAdminQuestions);
 router.post('/questions', adminController.createQuestion);
+router.post('/questions/generate', adminController.generateAiQuestions);
+router.post('/questions/bulk', adminController.bulkImportQuestions);
+router.patch('/questions/:id/status', adminController.updateQuestionStatus);
 router.put('/questions/:id', adminController.updateQuestion);
 router.delete('/questions/:id', adminController.deleteQuestion);
 

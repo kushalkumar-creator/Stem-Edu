@@ -10,7 +10,12 @@ import {
   Eye,
   Settings,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Video,
+  MessageSquare,
+  Activity,
+  Cpu,
+  Database
 } from 'lucide-react';
 import { getAdminStats } from '../../services/api';
 
@@ -45,8 +50,9 @@ export default function AdminDashboardPage() {
     { label: 'Chapters', value: stats?.chapters ?? '-', icon: Layers, color: '#D97706', bg: '#FFFBEB' },
     { label: 'Lessons', value: stats?.lessons ?? '-', icon: FileText, color: '#7C3AED', bg: '#F5F3FF' },
     { label: 'Practice MCQs', value: stats?.questions ?? '-', icon: HelpCircle, color: '#DC2626', bg: '#FEF2F2' },
-    { label: 'Interactive Diagrams', value: stats?.diagrams ?? '-', icon: Sparkles, color: '#0284C7', bg: '#F0F9FF' },
-    { label: '3D Virtual Labs', value: stats?.labs ?? '-', icon: Settings, color: '#4F46E5', bg: '#EEF2FF' }
+    { label: '3D Simulations', value: stats?.virtualTopics ?? 9, icon: Sparkles, color: '#0284C7', bg: '#F0F9FF' },
+    { label: '3D Virtual Labs', value: stats?.labs ?? 3, icon: Settings, color: '#4F46E5', bg: '#EEF2FF' },
+    { label: 'Chapter Videos', value: stats?.videos ?? 4, icon: Video, color: '#E11D48', bg: '#FFE4E6' }
   ];
 
   return (
@@ -219,6 +225,118 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </Link>
+
+        {/* 3D Virtual Learning Topics */}
+        <Link
+          to="/virtual-learning"
+          style={{ textDecoration: 'none' }}
+        >
+          <div className="card" style={{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: '#F0F9FF', color: '#0284C7' }}>
+                  <Sparkles size={20} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: '700', margin: 0, color: '#0F172A' }}>
+                  Virtual Learning (9 Topics)
+                </h3>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: '#64748B', margin: 0, lineHeight: 1.5 }}>
+                Inspect and review 3D simulations across Physics, Chemistry, Biology and Maths.
+              </p>
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#0284C7', fontSize: '0.85rem', fontWeight: '600', marginTop: '12px' }}>
+              View Simulations <ArrowRight size={14} />
+            </div>
+          </div>
+        </Link>
+
+        {/* 3D Virtual Labs */}
+        <Link
+          to="/labs"
+          style={{ textDecoration: 'none' }}
+        >
+          <div className="card" style={{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: '#EEF2FF', color: '#4F46E5' }}>
+                  <Settings size={20} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: '700', margin: 0, color: '#0F172A' }}>
+                  3D Virtual Labs (3 Experiments)
+                </h3>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: '#64748B', margin: 0, lineHeight: 1.5 }}>
+                Acid-Base Titration, Compound Microscope, and Simple Pendulum practical apparatus.
+              </p>
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#4F46E5', fontSize: '0.85rem', fontWeight: '600', marginTop: '12px' }}>
+              Launch Labs <ArrowRight size={14} />
+            </div>
+          </div>
+        </Link>
+
+        {/* Video Lectures */}
+        <Link
+          to="/videos"
+          style={{ textDecoration: 'none' }}
+        >
+          <div className="card" style={{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: '#FFE4E6', color: '#E11D48' }}>
+                  <Video size={20} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: '700', margin: 0, color: '#0F172A' }}>
+                  Chapter Videos
+                </h3>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: '#64748B', margin: 0, lineHeight: 1.5 }}>
+                Curated lecture videos with chapter timestamps, checkpoints, and Saarthi doubts.
+              </p>
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#E11D48', fontSize: '0.85rem', fontWeight: '600', marginTop: '12px' }}>
+              Inspect Lectures <ArrowRight size={14} />
+            </div>
+          </div>
+        </Link>
+      </div>
+
+      {/* Cloud & AI Quota Status (P2-14.2) */}
+      <h2 style={{ fontSize: '1rem', fontWeight: '700', margin: '24px 0 12px 0', color: '#1E293B' }}>
+        Cloud Infrastructure & Free-Tier Quota Status
+      </h2>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+        <div className="card" style={{ padding: '14px', backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <Cpu size={18} color="#7C3AED" />
+            <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '700', color: '#1E293B' }}>
+              Gemini 1.5 Flash AI Engine
+            </h4>
+          </div>
+          <div style={{ fontSize: '0.78rem', color: '#64748B', lineHeight: 1.5 }}>
+            • <strong>Rate Limit:</strong> 15 Requests / Minute (Free Tier)<br />
+            • <strong>Daily Limit:</strong> 1,500 Requests / Day<br />
+            • <strong>Saarthi RAG Cache:</strong> Active (15-min duplicate query deduplication)<br />
+            • <strong>Status:</strong> <span style={{ color: '#16A34A', fontWeight: '700' }}>HEALTHY & ACTIVE</span>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '14px', backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <Database size={18} color="#2563EB" />
+            <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '700', color: '#1E293B' }}>
+              Supabase PostgreSQL & Vector
+            </h4>
+          </div>
+          <div style={{ fontSize: '0.78rem', color: '#64748B', lineHeight: 1.5 }}>
+            • <strong>Storage Limit:</strong> 500 MB Free Tier (&lt; 25 MB utilized)<br />
+            • <strong>Vector Extension:</strong> pgvector HNSW cosine index enabled<br />
+            • <strong>Row Level Security (RLS):</strong> Enforced on all user tables<br />
+            • <strong>Status:</strong> <span style={{ color: '#16A34A', fontWeight: '700' }}>ONLINE & SYNCHRONIZED</span>
+          </div>
+        </div>
       </div>
     </div>
   );

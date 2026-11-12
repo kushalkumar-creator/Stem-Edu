@@ -231,9 +231,41 @@ const updateProfile = async (req, res, next) => {
   }
 };
 
+/**
+ * Delete User Data (P2-15.2 Right to Erasure)
+ * POST /api/auth/delete-data
+ */
+const deleteUserData = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+
+    // Purge student personal data across all user tables
+    await Promise.allSettled([
+      supabaseAdmin.from('memory_facts').delete().eq('user_id', userId),
+      supabaseAdmin.from('chat_messages').delete().eq('user_id', userId),
+      supabaseAdmin.from('chat_sessions').delete().eq('user_id', userId),
+      supabaseAdmin.from('notes').delete().eq('user_id', userId),
+      supabaseAdmin.from('chunks').delete().eq('user_id', userId),
+      supabaseAdmin.from('attempts').delete().eq('user_id', userId),
+      supabaseAdmin.from('test_results').delete().eq('user_id', userId),
+      supabaseAdmin.from('topic_progress').delete().eq('user_id', userId),
+      supabaseAdmin.from('community_messages').delete().eq('user_id', userId),
+      supabaseAdmin.auth.admin.deleteUser(userId)
+    ]);
+
+    res.json({
+      success: true,
+      message: 'All student personal data and auth credentials have been permanently deleted.'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   signup,
   login,
   getProfile,
-  updateProfile
+  updateProfile,
+  deleteUserData
 };

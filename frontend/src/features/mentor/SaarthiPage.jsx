@@ -1,18 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, Send, Sparkles, BookOpen, Clock, Brain, Trash2, ArrowRight, X, ExternalLink } from 'lucide-react';
+import { Bot, Send, Sparkles, BookOpen, Clock, Brain, Trash2, ArrowRight, X, ExternalLink, Camera, Image, Loader2, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function SaarthiPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const location = useLocation();
 
   const [mode, setMode] = useState('doubt'); // 'doubt' | 'mentor'
   const [subject, setSubject] = useState('physics');
   const [showMemoryModal, setShowMemoryModal] = useState(false);
   const [memories, setMemories] = useState([]);
   const [loadingMemories, setLoadingMemories] = useState(false);
+
+  // Photo Doubt state (P2-3.8)
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [photoDoubtPreview, setPhotoDoubtPreview] = useState(null);
+  const [extractedQuestionText, setExtractedQuestionText] = useState('');
+  const photoInputRef = useRef(null);
 
   const [messages, setMessages] = useState([
     {
@@ -25,6 +32,15 @@ export default function SaarthiPage() {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (location.state?.prefill) {
+      setInputText(location.state.prefill);
+    }
+    if (location.state?.subject) {
+      setSubject(location.state.subject.toLowerCase());
+    }
+  }, [location.state]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -68,6 +84,54 @@ export default function SaarthiPage() {
   const handleOpenMemoryModal = () => {
     setShowMemoryModal(true);
     fetchMemories();
+  };
+
+  // Photo Doubt Handlers (P2-3.8)
+  const handlePhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const base64Data = ev.target.result;
+      setPhotoDoubtPreview(base64Data);
+      setOcrLoading(true);
+
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/notes/ocr', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` })
+          },
+          body: JSON.stringify({
+            imageBase64: base64Data,
+            mimeType: file.type || 'image/jpeg'
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.text) {
+          setExtractedQuestionText(data.text);
+        } else {
+          setExtractedQuestionText('Could not transcribe question automatically. Please type or edit your question here.');
+        }
+      } catch (err) {
+        setExtractedQuestionText('Photo captured. Please verify or edit your question here before asking.');
+      } finally {
+        setOcrLoading(false);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleSendPhotoDoubt = () => {
+    if (!extractedQuestionText.trim()) return;
+    const doubtQuery = `[Photo Question]: ${extractedQuestionText.trim()}`;
+    setPhotoDoubtPreview(null);
+    setExtractedQuestionText('');
+    handleSend(doubtQuery);
   };
 
   const handleSend = async (textToSend) => {
@@ -360,19 +424,157 @@ export default function SaarthiPage() {
         ))}
       </div>
 
+      {/* Photo Doubt Confirmation Card (P2-3.8) */}
+      {photoDoubtPreview && (
+        <div
+          style={{
+            backgroundColor: '#FAF5FF',
+            border: '1px solid #D8B4FE',
+            borderRadius: '12px',
+            padding: '12px',
+            marginBottom: '8px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Camera size={16} color="#7C3AED" />
+              <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#6B21A8' }}>
+                Question Extracted from Photo {ocrLoading && '(Transcribing...)'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setPhotoDoubtPreview(null);
+                setExtractedQuestionText('');
+              }}
+              style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748B' }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <img
+              src={photoDoubtPreview}
+              alt="Question preview"
+              style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #E2E8F0' }}
+            />
+            <div style={{ flex: 1 }}>
+              {ocrLoading ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', color: '#7C3AED', padding: '12px 0' }}>
+                  <Loader2 size={16} className="animate-spin" /> Transcribing handwriting & formulas with Gemini Vision...
+                </div>
+              ) : (
+                <textarea
+                  value={extractedQuestionText}
+                  onChange={(e) => setExtractedQuestionText(e.target.value)}
+                  placeholder="Review or edit transcribed question text before asking..."
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    fontSize: '0.82rem',
+                    borderRadius: '8px',
+                    border: '1px solid #CBD5E1',
+                    outline: 'none',
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              )}
+            </div>
+          </div>
+
+          {!ocrLoading && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setPhotoDoubtPreview(null);
+                  setExtractedQuestionText('');
+                }}
+                style={{
+                  padding: '5px 10px',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  borderRadius: '6px',
+                  border: '1px solid #CBD5E1',
+                  backgroundColor: '#FFFFFF',
+                  color: '#64748B',
+                  cursor: 'pointer'
+                }}
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                onClick={handleSendPhotoDoubt}
+                disabled={!extractedQuestionText.trim()}
+                style={{
+                  padding: '5px 14px',
+                  fontSize: '0.75rem',
+                  fontWeight: '700',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#7C3AED',
+                  color: '#FFFFFF',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <Check size={14} /> Ask Saarthi This Question
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Input Box */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           handleSend();
         }}
-        style={{ display: 'flex', gap: '8px', padding: '6px', backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid var(--color-border)' }}
+        style={{ display: 'flex', gap: '8px', padding: '6px', backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid var(--color-border)', alignItems: 'center' }}
       >
+        <input
+          type="file"
+          ref={photoInputRef}
+          accept="image/*"
+          capture="environment"
+          onChange={handlePhotoSelect}
+          style={{ display: 'none' }}
+        />
+        <button
+          type="button"
+          onClick={() => photoInputRef.current?.click()}
+          title="Upload or capture photo of question"
+          style={{
+            backgroundColor: '#F8FAFC',
+            color: '#7C3AED',
+            border: '1px solid #E2E8F0',
+            borderRadius: '8px',
+            padding: '8px 10px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <Camera size={16} />
+        </button>
+
         <input
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          placeholder={mode === 'doubt' ? `Ask any ${subject.toUpperCase()} doubt...` : "Ask for study guidance, weak areas, or revision plans..."}
+          placeholder={mode === 'doubt' ? `Ask any ${subject.toUpperCase()} doubt, or tap camera to snap a question...` : "Ask for study guidance, weak areas, or revision plans..."}
           style={{ flex: 1, border: 'none', outline: 'none', padding: '8px 12px', fontSize: '0.9rem' }}
         />
         <button

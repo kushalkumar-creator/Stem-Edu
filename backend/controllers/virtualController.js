@@ -151,3 +151,4 @@ exports.recordProgress = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to record progress', error: err.message });
   }
 };
+
