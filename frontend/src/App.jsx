@@ -18,6 +18,7 @@ import ResultsPage from './pages/ResultsPage';
 import VirtualLabPage from './pages/VirtualLabPage';
 import ProfilePage from './pages/ProfilePage';
 import SaarthiPage from './features/mentor/SaarthiPage';
+import NotesPage from './features/notes/NotesPage';
 
 // Admin Pages (Phase 10)
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/practice/:chapterId" element={<PracticeTestPage />} />
         <Route path="/results" element={<ResultsPage />} />
         <Route path="/mentor" element={<SaarthiPage />} />
+        <Route path="/notes" element={<NotesPage />} />
         <Route path="/labs" element={<VirtualLabPage />} />
         <Route path="/labs/:labId" element={<VirtualLabPage />} />
         <Route path="/profile" element={<ProfilePage />} />

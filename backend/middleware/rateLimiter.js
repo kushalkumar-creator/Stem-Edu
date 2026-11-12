@@ -33,6 +33,7 @@ const aiRateLimiter = rateLimit({
   max: 30, // Limit each user / IP to 30 AI queries per window
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
   keyGenerator: (req) => {
     return (req.user && req.user.id) || req.ip || 'anonymous';
   },
@@ -49,3 +50,4 @@ module.exports = {
   aiRateLimiter,
   usageMetrics
 };
+

@@ -89,3 +89,4 @@ create policy "own memory facts update" on public.memory_facts for update using 
 
 drop policy if exists "own memory facts delete" on public.memory_facts;
 create policy "own memory facts delete" on public.memory_facts for delete using (auth.uid() = user_id);
+

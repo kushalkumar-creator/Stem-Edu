@@ -158,6 +158,34 @@ export default function ProfilePage() {
           </p>
         </div>
 
+        {/* 5. Personal Knowledge Base Link (P2-2.7) */}
+        <div style={{ marginBottom: '24px', padding: '12px', backgroundColor: '#FAF5FF', borderRadius: '8px', border: '1px solid #E9D5FF', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontWeight: '700', fontSize: '0.9rem', color: '#6B21A8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <BookOpen size={16} /> My Private Knowledge Base
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#7E22CE', marginTop: '2px' }}>
+              Upload and manage your personal study notes and formula sheets.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/notes')}
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.75rem',
+              fontWeight: '700',
+              backgroundColor: '#7C3AED',
+              color: '#FFFFFF',
+              borderRadius: '6px',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            Manage Notes
+          </button>
+        </div>
+
         <button
           onClick={handleSave}
           disabled={saving}

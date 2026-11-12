@@ -9,6 +9,9 @@ const summaryRoutes = require('./summaryRoutes');
 const diagramRoutes = require('./diagramRoutes');
 const labRoutes = require('./labRoutes');
 const adminRoutes = require('./adminRoutes');
+const ragRoutes = require('./ragRoutes');
+const mentorRoutes = require('./mentorRoutes');
+const { aiRateLimiter } = require('../middleware/rateLimiter');
 
 const { getProfile, updateProfile } = require('../controllers/authController');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
@@ -42,6 +45,12 @@ router.use('/', diagramRoutes);
 
 // Virtual Labs route (/api/labs)
 router.use('/labs', labRoutes);
+
+// RAG Knowledge Base routes (/api/rag/*)
+router.use('/rag', aiRateLimiter, ragRoutes);
+
+// Saarthi AI Mentor & Doubt Solver routes (/api/mentor/*)
+router.use('/mentor', aiRateLimiter, mentorRoutes);
 
 // Admin Content Management routes (/api/admin/*)
 router.use('/admin', adminRoutes);

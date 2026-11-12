@@ -111,5 +111,6 @@ const requireAdmin = (req, res, next) => {
 module.exports = {
   requireAuth,
   optionalAuth,
-  requireAdmin
+  requireAdmin,
+  authMiddleware: requireAuth
 };

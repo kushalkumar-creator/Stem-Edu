@@ -754,3 +754,4 @@ if (require.main === module) {
 }
 
 module.exports = seedClass12AndExpandedCurriculum;
+
