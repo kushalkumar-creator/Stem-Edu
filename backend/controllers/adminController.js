@@ -140,7 +140,7 @@ exports.deleteSubject = async (req, res, next) => {
 
 exports.createChapter = async (req, res, next) => {
   try {
-    const { subjectId, chapterNumber, title, titleHindi, description, descriptionHindi, classLevel, board } = req.body;
+    const { subjectId, chapterNumber, title, titleHindi, description, descriptionHindi, classLevel, board, language } = req.body;
     const { data: chapter, error } = await supabaseAdmin
       .from('chapters')
       .insert({
@@ -150,8 +150,9 @@ exports.createChapter = async (req, res, next) => {
         title_hindi: titleHindi || title,
         description: description || '',
         description_hindi: descriptionHindi || '',
-        class_level: classLevel || 10,
-        board: board || 'CBSE'
+        class_level: Number(classLevel || 10),
+        board: board || 'CBSE',
+        language: language || 'en'
       })
       .select('*')
       .single();
@@ -165,7 +166,9 @@ exports.createChapter = async (req, res, next) => {
         subjectId: chapter.subject_id,
         chapterNumber: chapter.chapter_number,
         titleHindi: chapter.title_hindi,
-        classLevel: chapter.class_level
+        classLevel: chapter.class_level,
+        board: chapter.board,
+        language: chapter.language
       }
     });
   } catch (error) {
@@ -184,6 +187,7 @@ exports.updateChapter = async (req, res, next) => {
     if (req.body.descriptionHindi !== undefined) updates.description_hindi = req.body.descriptionHindi;
     if (req.body.classLevel !== undefined) updates.class_level = Number(req.body.classLevel);
     if (req.body.board !== undefined) updates.board = req.body.board;
+    if (req.body.language !== undefined) updates.language = req.body.language;
 
     const { data: chapter, error } = await supabaseAdmin
       .from('chapters')
@@ -201,7 +205,9 @@ exports.updateChapter = async (req, res, next) => {
         subjectId: chapter.subject_id,
         chapterNumber: chapter.chapter_number,
         titleHindi: chapter.title_hindi,
-        classLevel: chapter.class_level
+        classLevel: chapter.class_level,
+        board: chapter.board,
+        language: chapter.language
       }
     });
   } catch (error) {
@@ -230,7 +236,7 @@ exports.deleteChapter = async (req, res, next) => {
 
 exports.createLesson = async (req, res, next) => {
   try {
-    const { chapterId, lessonNumber, title, titleHindi, summary, summaryHindi, contentBlocks, diagramId } = req.body;
+    const { chapterId, lessonNumber, title, titleHindi, summary, summaryHindi, contentBlocks, diagramId, classLevel, board, language } = req.body;
     const { data: lesson, error } = await supabaseAdmin
       .from('lessons')
       .insert({
@@ -241,7 +247,10 @@ exports.createLesson = async (req, res, next) => {
         summary: summary || '',
         summary_hindi: summaryHindi || '',
         content_blocks: contentBlocks || [],
-        diagram_id: diagramId || null
+        diagram_id: diagramId || null,
+        class_level: Number(classLevel || 10),
+        board: board || 'CBSE',
+        language: language || 'en'
       })
       .select('*')
       .single();
@@ -255,7 +264,10 @@ exports.createLesson = async (req, res, next) => {
         chapterId: lesson.chapter_id,
         lessonNumber: lesson.lesson_number,
         titleHindi: lesson.title_hindi,
-        contentBlocks: lesson.content_blocks
+        contentBlocks: lesson.content_blocks,
+        classLevel: lesson.class_level,
+        board: lesson.board,
+        language: lesson.language
       }
     });
   } catch (error) {
@@ -274,6 +286,9 @@ exports.updateLesson = async (req, res, next) => {
     if (req.body.summaryHindi !== undefined) updates.summary_hindi = req.body.summaryHindi;
     if (req.body.contentBlocks !== undefined) updates.content_blocks = req.body.contentBlocks;
     if (req.body.diagramId !== undefined) updates.diagram_id = req.body.diagramId || null;
+    if (req.body.classLevel !== undefined) updates.class_level = Number(req.body.classLevel);
+    if (req.body.board !== undefined) updates.board = req.body.board;
+    if (req.body.language !== undefined) updates.language = req.body.language;
 
     const { data: lesson, error } = await supabaseAdmin
       .from('lessons')
@@ -291,7 +306,10 @@ exports.updateLesson = async (req, res, next) => {
         chapterId: lesson.chapter_id,
         lessonNumber: lesson.lesson_number,
         titleHindi: lesson.title_hindi,
-        contentBlocks: lesson.content_blocks
+        contentBlocks: lesson.content_blocks,
+        classLevel: lesson.class_level,
+        board: lesson.board,
+        language: lesson.language
       }
     });
   } catch (error) {
@@ -361,7 +379,7 @@ exports.getAdminQuestions = async (req, res, next) => {
 
 exports.createQuestion = async (req, res, next) => {
   try {
-    const { chapterId, questionText, questionTextHindi, options, optionsHindi, correctOptionIndex, explanation, explanationHindi, difficulty } = req.body;
+    const { chapterId, questionText, questionTextHindi, options, optionsHindi, correctOptionIndex, explanation, explanationHindi, difficulty, classLevel, board, language } = req.body;
     const { data: q, error } = await supabaseAdmin
       .from('questions')
       .insert({
@@ -373,7 +391,10 @@ exports.createQuestion = async (req, res, next) => {
         correct_option_index: Number(correctOptionIndex || 0),
         explanation: explanation || '',
         explanation_hindi: explanationHindi || '',
-        difficulty: difficulty || 'medium'
+        difficulty: difficulty || 'medium',
+        class_level: Number(classLevel || 10),
+        board: board || 'CBSE',
+        language: language || 'en'
       })
       .select('*')
       .single();
@@ -387,7 +408,10 @@ exports.createQuestion = async (req, res, next) => {
         chapterId: q.chapter_id,
         questionText: q.question_text,
         questionTextHindi: q.question_text_hindi,
-        correctOptionIndex: q.correct_option_index
+        correctOptionIndex: q.correct_option_index,
+        classLevel: q.class_level,
+        board: q.board,
+        language: q.language
       }
     });
   } catch (error) {
@@ -407,6 +431,9 @@ exports.updateQuestion = async (req, res, next) => {
     if (req.body.explanation !== undefined) updates.explanation = req.body.explanation;
     if (req.body.explanationHindi !== undefined) updates.explanation_hindi = req.body.explanationHindi;
     if (req.body.difficulty !== undefined) updates.difficulty = req.body.difficulty;
+    if (req.body.classLevel !== undefined) updates.class_level = Number(req.body.classLevel);
+    if (req.body.board !== undefined) updates.board = req.body.board;
+    if (req.body.language !== undefined) updates.language = req.body.language;
 
     const { data: q, error } = await supabaseAdmin
       .from('questions')
@@ -424,7 +451,10 @@ exports.updateQuestion = async (req, res, next) => {
         chapterId: q.chapter_id,
         questionText: q.question_text,
         questionTextHindi: q.question_text_hindi,
-        correctOptionIndex: q.correct_option_index
+        correctOptionIndex: q.correct_option_index,
+        classLevel: q.class_level,
+        board: q.board,
+        language: q.language
       }
     });
   } catch (error) {

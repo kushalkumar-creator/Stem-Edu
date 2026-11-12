@@ -413,3 +413,33 @@ The MVP is complete when all of the following are true:
 - `Tasks.md`: ordered build tasks
 
 For free external data (for example science or periodic-table APIs), check public-apis/public-apis before building your own.
+
+
+---
+
+## 10. Phase 2 Specifications: Intelligence, Immersion & Reach
+
+### 10.1 Scope & Curriculum Expansion
+- **Target Classes:** CBSE Class 10 and Class 12.
+- **Subjects:** Mathematics, Physics, Chemistry, Biology.
+- **Multilingual Support:** English (`en`), Hindi (`hi`), and Regional Language (Marathi `mr`).
+
+### 10.2 Phase 2 Feature Pillars
+1. **Saarthi AI Mentor & Doubt Solver:**
+   - 24/7 doubt resolution grounded in NCERT & CBSE syllabus.
+   - Long-term memory (`memory_facts`) across student sessions.
+   - Socratic guidance for homework questions rather than direct answer dumps.
+2. **CBSE & Personal Notes RAG Pipeline:**
+   - Vector embeddings using Google Gemini `text-embedding-004` (768 dimensions).
+   - Vector store in Supabase PostgreSQL via `pgvector` extension and HNSW cosine index.
+   - Exact citation of textbook chapter and page numbers.
+   - Strict student notes isolation enforced at both API and Postgres Row Level Security (RLS) layers.
+3. **Virtual Learning & 3D Interactive Labs:**
+   - High-fidelity Three.js 3D virtual experiments with small-angle SHM, ray optics, and conic cone slicing.
+   - Observation quizzes and simulation parameter recording.
+4. **AI Chapter Videos & Community:**
+   - Video lecture previews with bilingual subtitles and progress tracking.
+   - Discord community hub for peer discussions and doubt sharing.
+5. **Offline PWA Learning:**
+   - Service worker caching for questions, lessons, and student notes.
+   - Local IndexedDB storage with auto-sync when back online.
