@@ -13,3 +13,4 @@ const supabaseAdmin = (supabaseUrl && supabaseServiceRoleKey)
   : null;
 
 module.exports = { supabaseAdmin };
+

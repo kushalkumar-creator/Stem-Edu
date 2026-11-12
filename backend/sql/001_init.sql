@@ -126,3 +126,4 @@ create policy "insert own chunks" on public.chunks
 drop policy if exists "delete own chunks" on public.chunks;
 create policy "delete own chunks" on public.chunks
   for delete using (user_id = auth.uid());
+
