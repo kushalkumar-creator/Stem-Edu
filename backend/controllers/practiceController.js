@@ -1,28 +1,31 @@
-const Question = require('../models/Question');
-const TestResult = require('../models/TestResult');
+const { supabaseAdmin } = require('../utils/supabaseAdmin');
 
 /**
  * GET /api/chapters/:id/test
  * Returns chapter test questions WITHOUT correct answers or explanations
- * Task 3.4: "Done when: the response has no correctIndex field."
  */
 const getChapterTest = async (req, res, next) => {
   try {
     const chapterId = req.params.id;
 
-    const questions = await Question.find({ chapterId })
-      .select('-correctOptionIndex -explanation -explanationHindi -__v');
+    const { data: questions, error } = await supabaseAdmin
+      .from('questions')
+      .select('id, chapter_id, question_text, question_text_hindi, options, options_hindi, difficulty, marks')
+      .eq('chapter_id', chapterId);
 
-    // Strip any virtuals or accidental leaks to guarantee safety
-    const sanitizedQuestions = questions.map(q => {
-      const obj = q.toObject();
-      delete obj.correctOptionIndex;
-      delete obj.correctIndex;
-      delete obj.explanation;
-      delete obj.explanationHindi;
-      obj.id = obj._id;
-      return obj;
-    });
+    if (error) throw error;
+
+    const sanitizedQuestions = (questions || []).map(q => ({
+      _id: q.id,
+      id: q.id,
+      chapterId: q.chapter_id,
+      questionText: q.question_text,
+      questionTextHindi: q.question_text_hindi,
+      options: q.options || [],
+      optionsHindi: q.options_hindi || [],
+      difficulty: q.difficulty,
+      marks: q.marks
+    }));
 
     res.status(200).json(sanitizedQuestions);
   } catch (error) {
@@ -32,57 +35,53 @@ const getChapterTest = async (req, res, next) => {
 
 /**
  * POST /api/chapters/:id/test/submit
- * Hand-written scoring route that validates answers on the server, calculates score,
- * saves TestResult, and returns score plus explanations.
- * Task 3.5: "Done when: a known set of answers gives the expected score."
+ * Server-side scoring route validating answers, calculating score, and saving TestResult
  */
 const submitChapterTest = async (req, res, next) => {
   try {
     const chapterId = req.params.id;
-    const userId = req.user._id;
+    const userId = req.user.id;
     const { answers = [], timeTakenSeconds = 0 } = req.body;
 
-    // 1. Fetch all official questions for this chapter from the database
-    const questions = await Question.find({ chapterId });
+    // 1. Fetch official questions for this chapter
+    const { data: questions, error: qErr } = await supabaseAdmin
+      .from('questions')
+      .select('*')
+      .eq('chapter_id', chapterId);
 
+    if (qErr) throw qErr;
     if (!questions || questions.length === 0) {
       return res.status(404).json({ message: 'No questions found for this chapter' });
     }
 
-    // 2. Index questions by ID for fast lookup
     const questionMap = new Map();
     questions.forEach(q => {
-      questionMap.set(q._id.toString(), q);
+      questionMap.set(String(q.id), q);
     });
 
-    // Map student submitted answers by questionId
     const submittedAnswersMap = new Map();
     answers.forEach(a => {
-      if (a && a.questionId) {
-        submittedAnswersMap.set(a.questionId.toString(), a.selectedOptionIndex);
-      }
+      const qId = String(a.questionId || a._id || a.id);
+      submittedAnswersMap.set(qId, a.selectedOptionIndex);
     });
 
     let score = 0;
     const itemizedAnswers = [];
 
-    // 3. Score every question on the server
     for (const question of questions) {
-      const qIdStr = question._id.toString();
-      const selectedIndex = submittedAnswersMap.has(qIdStr)
-        ? Number(submittedAnswersMap.get(qIdStr))
-        : -1;
+      const qId = String(question.id);
+      const selectedIndex = submittedAnswersMap.has(qId)
+        ? submittedAnswersMap.get(qId)
+        : null;
 
-      const isCorrect = selectedIndex === question.correctOptionIndex;
-      if (isCorrect) {
-        score += 1;
-      }
+      const isCorrect = selectedIndex !== null && selectedIndex === question.correct_option_index;
+      if (isCorrect) score += (question.marks || 1);
 
       itemizedAnswers.push({
-        questionId: question._id,
-        questionText: question.questionText,
+        questionId: question.id,
+        questionText: question.question_text,
         selectedOptionIndex: selectedIndex,
-        correctOptionIndex: question.correctOptionIndex,
+        correctOptionIndex: question.correct_option_index,
         isCorrect,
         explanation: question.explanation
       });
@@ -93,25 +92,31 @@ const submitChapterTest = async (req, res, next) => {
       ? Math.round((score / totalQuestions) * 100)
       : 0;
 
-    // 4. Save attempt in TestResult collection
-    const testResult = await TestResult.create({
-      userId,
-      chapterId,
-      totalQuestions,
-      score,
-      percentage,
-      answers: itemizedAnswers,
-      timeTakenSeconds: Number(timeTakenSeconds) || 0
-    });
+    // 2. Insert into public.test_results
+    const { data: testResult, error: saveErr } = await supabaseAdmin
+      .from('test_results')
+      .insert({
+        user_id: userId,
+        chapter_id: chapterId,
+        total_questions: totalQuestions,
+        score,
+        percentage,
+        answers: itemizedAnswers,
+        time_taken_seconds: Number(timeTakenSeconds) || 0
+      })
+      .select('*')
+      .single();
+
+    if (saveErr) throw saveErr;
 
     res.status(200).json({
       success: true,
       message: 'Test submitted and scored successfully',
-      resultId: testResult._id,
+      resultId: testResult.id,
       score,
       totalQuestions,
       percentage,
-      timeTakenSeconds: testResult.timeTakenSeconds,
+      timeTakenSeconds: testResult.time_taken_seconds,
       answers: itemizedAnswers
     });
   } catch (error) {
@@ -122,17 +127,57 @@ const submitChapterTest = async (req, res, next) => {
 /**
  * GET /api/results
  * List past test attempts for the authenticated student, sorted newest first
- * Task 3.6: "Done when: two attempts both appear, newest first."
  */
 const getResults = async (req, res, next) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user.id;
 
-    const results = await TestResult.find({ userId })
-      .populate('chapterId', 'chapterNumber title titleHindi subjectId')
-      .sort({ createdAt: -1 });
+    const { data: results, error } = await supabaseAdmin
+      .from('test_results')
+      .select(`
+        id,
+        user_id,
+        chapter_id,
+        total_questions,
+        score,
+        percentage,
+        answers,
+        time_taken_seconds,
+        created_at,
+        chapters:chapter_id (
+          id,
+          chapter_number,
+          title,
+          title_hindi,
+          subject_id
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-    res.status(200).json(results);
+    if (error) throw error;
+
+    const formatted = (results || []).map(r => ({
+      _id: r.id,
+      id: r.id,
+      userId: r.user_id,
+      chapterId: r.chapters ? {
+        _id: r.chapters.id,
+        id: r.chapters.id,
+        chapterNumber: r.chapters.chapter_number,
+        title: r.chapters.title,
+        titleHindi: r.chapters.title_hindi,
+        subjectId: r.chapters.subject_id
+      } : r.chapter_id,
+      totalQuestions: r.total_questions,
+      score: r.score,
+      percentage: r.percentage,
+      answers: r.answers || [],
+      timeTakenSeconds: r.time_taken_seconds,
+      createdAt: r.created_at
+    }));
+
+    res.status(200).json(formatted);
   } catch (error) {
     next(error);
   }
@@ -144,16 +189,56 @@ const getResults = async (req, res, next) => {
  */
 const getResultById = async (req, res, next) => {
   try {
-    const result = await TestResult.findOne({
-      _id: req.params.id,
-      userId: req.user._id
-    }).populate('chapterId', 'chapterNumber title titleHindi subjectId');
+    const { data: r, error } = await supabaseAdmin
+      .from('test_results')
+      .select(`
+        id,
+        user_id,
+        chapter_id,
+        total_questions,
+        score,
+        percentage,
+        answers,
+        time_taken_seconds,
+        created_at,
+        chapters:chapter_id (
+          id,
+          chapter_number,
+          title,
+          title_hindi,
+          subject_id
+        )
+      `)
+      .eq('id', req.params.id)
+      .eq('user_id', req.user.id)
+      .maybeSingle();
 
-    if (!result) {
+    if (error) throw error;
+    if (!r) {
       return res.status(404).json({ message: 'Test result not found' });
     }
 
-    res.status(200).json(result);
+    const formatted = {
+      _id: r.id,
+      id: r.id,
+      userId: r.user_id,
+      chapterId: r.chapters ? {
+        _id: r.chapters.id,
+        id: r.chapters.id,
+        chapterNumber: r.chapters.chapter_number,
+        title: r.chapters.title,
+        titleHindi: r.chapters.title_hindi,
+        subjectId: r.chapters.subject_id
+      } : r.chapter_id,
+      totalQuestions: r.total_questions,
+      score: r.score,
+      percentage: r.percentage,
+      answers: r.answers || [],
+      timeTakenSeconds: r.time_taken_seconds,
+      createdAt: r.created_at
+    };
+
+    res.status(200).json(formatted);
   } catch (error) {
     next(error);
   }
@@ -165,4 +250,3 @@ module.exports = {
   getResults,
   getResultById
 };
-

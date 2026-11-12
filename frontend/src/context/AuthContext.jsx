@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
 import api from '../services/api';
 
 const AuthContext = createContext(null);
@@ -15,38 +16,85 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('token') || null);
   const [loading, setLoading] = useState(true);
 
-  // Verify stored token on app mount
+  // Sync Supabase Auth session & onAuthStateChange listener
   useEffect(() => {
-    async function verifyAuth() {
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+    let mounted = true;
 
+    async function initAuth() {
       try {
-        const response = await api.getMe();
-        if (response && response.user) {
-          setUser(response.user);
-          localStorage.setItem('user', JSON.stringify(response.user));
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user && mounted) {
+          const currentToken = session.access_token;
+          setToken(currentToken);
+          localStorage.setItem('token', currentToken);
+
+          // Fetch user profile from backend /api/me
+          try {
+            const res = await api.getMe();
+            if (res && res.user && mounted) {
+              setUser(res.user);
+              localStorage.setItem('user', JSON.stringify(res.user));
+            }
+          } catch (_) {
+            // Keep existing session user if network slow
+          }
+        } else if (!session && token && mounted) {
+          // If token in localStorage but Supabase session empty, verify with backend
+          try {
+            const res = await api.getMe();
+            if (res && res.user && mounted) {
+              setUser(res.user);
+              localStorage.setItem('user', JSON.stringify(res.user));
+            }
+          } catch {
+            if (mounted) logout();
+          }
         }
       } catch (err) {
-        console.warn('Saved token expired or invalid:', err.message);
-        logout();
+        console.warn('Auth initialization warning:', err.message);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
 
-    verifyAuth();
-  }, [token]);
+    initAuth();
+
+    // Listen to Supabase auth events (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session && session.user) {
+        setToken(session.access_token);
+        localStorage.setItem('token', session.access_token);
+      } else if (event === 'SIGNED_OUT') {
+        logout();
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription?.unsubscribe();
+    };
+  }, []);
 
   const login = async (credentials) => {
+    // Authenticate through API endpoint (which signs in via Supabase)
     const data = await api.login(credentials);
     if (data.token && data.user) {
       setToken(data.token);
       setUser(data.user);
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
+
+      // Also set Supabase client session if available
+      try {
+        if (credentials.email && credentials.password) {
+          await supabase.auth.signInWithPassword({
+            email: credentials.email,
+            password: credentials.password
+          });
+        }
+      } catch (_) {
+        // Handled gracefully
+      }
     }
     return data;
   };
@@ -58,11 +106,25 @@ export function AuthProvider({ children }) {
       setUser(data.user);
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
+
+      try {
+        if (userData.email && userData.password) {
+          await supabase.auth.signInWithPassword({
+            email: userData.email,
+            password: userData.password
+          });
+        }
+      } catch (_) {
+        // Handled gracefully
+      }
     }
     return data;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (_) {}
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');
@@ -86,7 +148,8 @@ export function AuthProvider({ children }) {
     login,
     signup,
     logout,
-    updateProfile
+    updateProfile,
+    supabase
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -99,6 +162,3 @@ export function useAuth() {
   }
   return context;
 }
-
-export default AuthContext;
-

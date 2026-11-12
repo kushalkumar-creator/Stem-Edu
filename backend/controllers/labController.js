@@ -1,6 +1,47 @@
-const mongoose = require('mongoose');
-const Lab = require('../models/Lab');
-const LabResult = require('../models/LabResult');
+const { supabaseAdmin } = require('../utils/supabaseAdmin');
+
+function formatLab(l, isAdmin = false) {
+  const quiz = l.quiz || [];
+  const observationQuestions = quiz.map((q, idx) => {
+    const formatted = {
+      _id: q._id || `q_${idx}`,
+      id: q.id || `q_${idx}`,
+      question: q.question,
+      questionHindi: q.questionHindi,
+      options: q.options || [],
+      optionsHindi: q.optionsHindi || []
+    };
+    if (isAdmin) {
+      formatted.correctIndex = q.correctIndex;
+      formatted.explanation = q.explanation;
+    }
+    return formatted;
+  });
+
+  return {
+    _id: l.id,
+    id: l.id,
+    title: l.title,
+    titleHindi: l.title_hindi,
+    experimentType: l.experiment_type,
+    description: l.description,
+    descriptionHindi: l.description_hindi,
+    instructions: l.instructions || [],
+    instructionsHindi: l.instructions_hindi || [],
+    variables: l.variables || [],
+    observationQuestions,
+    quiz: l.quiz || [],
+    subjectId: l.subjects ? {
+      _id: l.subjects.id,
+      id: l.subjects.id,
+      name: l.subjects.name,
+      nameHindi: l.subjects.name_hindi,
+      code: l.subjects.code,
+      color: l.subjects.color
+    } : l.subject_id,
+    createdAt: l.created_at
+  };
+}
 
 /**
  * GET /api/labs
@@ -8,22 +49,32 @@ const LabResult = require('../models/LabResult');
  */
 exports.getAllLabs = async (req, res, next) => {
   try {
-    const filter = {};
-    if (req.query.subjectId && mongoose.isValidObjectId(req.query.subjectId)) {
-      filter.subjectId = req.query.subjectId;
-    }
+    let query = supabaseAdmin
+      .from('labs')
+      .select(`
+        *,
+        subjects:subject_id (
+          id, name, name_hindi, code, color
+        )
+      `)
+      .order('created_at', { ascending: true });
+
     if (req.query.experimentType) {
-      filter.experimentType = req.query.experimentType;
+      query = query.eq('experiment_type', req.query.experimentType);
+    }
+    if (req.query.subjectId) {
+      query = query.eq('subject_id', req.query.subjectId);
     }
 
-    const labs = await Lab.find(filter)
-      .populate('subjectId', 'name nameHindi code color')
-      .select('-observationQuestions.correctIndex');
+    const { data: labs, error } = await query;
+    if (error) throw error;
+
+    const formattedLabs = (labs || []).map(l => formatLab(l, false));
 
     res.json({
       success: true,
-      count: labs.length,
-      labs
+      count: formattedLabs.length,
+      labs: formattedLabs
     });
   } catch (error) {
     next(error);
@@ -32,21 +83,32 @@ exports.getAllLabs = async (req, res, next) => {
 
 /**
  * GET /api/labs/:id
- * Retrieve a specific lab by ObjectId or experimentType identifier
+ * Retrieve a specific lab by UUID or experimentType identifier
  */
 exports.getLabByIdOrType = async (req, res, next) => {
   try {
     const { id } = req.params;
-    let query;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-    if (mongoose.isValidObjectId(id)) {
-      query = { _id: id };
+    let query = supabaseAdmin
+      .from('labs')
+      .select(`
+        *,
+        subjects:subject_id (
+          id, name, name_hindi, code, color
+        )
+      `);
+
+    if (isUuid) {
+      query = query.eq('id', id);
     } else {
       const norm = id === 'pendulum' ? 'simple_pendulum' : id;
-      query = { experimentType: norm };
+      query = query.eq('experiment_type', norm);
     }
 
-    const lab = await Lab.findOne(query).populate('subjectId', 'name nameHindi code color');
+    const { data: lab, error } = await query.maybeSingle();
+    if (error) throw error;
+
     if (!lab) {
       return res.status(404).json({
         success: false,
@@ -54,23 +116,10 @@ exports.getLabByIdOrType = async (req, res, next) => {
       });
     }
 
-    // Prepare safe questions for student (hide correctIndex until submit)
     const isAdmin = req.user && req.user.role === 'admin';
-    const safeLab = lab.toObject();
-
-    if (!isAdmin) {
-      safeLab.observationQuestions = safeLab.observationQuestions.map(q => ({
-        _id: q._id,
-        question: q.question,
-        questionHindi: q.questionHindi,
-        options: q.options,
-        optionsHindi: q.optionsHindi
-      }));
-    }
-
     res.json({
       success: true,
-      lab: safeLab
+      lab: formatLab(lab, isAdmin)
     });
   } catch (error) {
     next(error);
@@ -93,15 +142,18 @@ exports.submitLabQuiz = async (req, res, next) => {
       });
     }
 
-    let query;
-    if (mongoose.isValidObjectId(id)) {
-      query = { _id: id };
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    let query = supabaseAdmin.from('labs').select('*');
+
+    if (isUuid) {
+      query = query.eq('id', id);
     } else {
       const norm = id === 'pendulum' ? 'simple_pendulum' : id;
-      query = { experimentType: norm };
+      query = query.eq('experiment_type', norm);
     }
 
-    const lab = await Lab.findOne(query);
+    const { data: lab, error: labErr } = await query.maybeSingle();
+    if (labErr) throw labErr;
     if (!lab) {
       return res.status(404).json({
         success: false,
@@ -109,11 +161,12 @@ exports.submitLabQuiz = async (req, res, next) => {
       });
     }
 
-    const totalQuestions = lab.observationQuestions.length;
+    const quiz = lab.quiz || [];
+    const totalQuestions = quiz.length;
     let score = 0;
     const evaluatedAnswers = [];
 
-    lab.observationQuestions.forEach((q, idx) => {
+    quiz.forEach((q, idx) => {
       const selectedIndex = answers[idx];
       const isCorrect = selectedIndex === q.correctIndex;
       if (isCorrect) score += 1;
@@ -131,25 +184,32 @@ exports.submitLabQuiz = async (req, res, next) => {
     const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
     const passed = percentage >= 60;
 
-    // Save student lab result
-    let savedResult = null;
-    if (req.user && req.user._id) {
-      const labResult = new LabResult({
-        userId: req.user._id,
-        labId: lab._id,
-        score,
-        totalQuestions,
-        percentage,
-        passed,
-        answers: evaluatedAnswers,
-        simulationConfig: simulationConfig || {}
-      });
-      savedResult = await labResult.save();
+    // Save student lab result if user is authenticated
+    let savedResultId = null;
+    if (req.user && req.user.id) {
+      const { data: savedResult, error: saveErr } = await supabaseAdmin
+        .from('lab_results')
+        .insert({
+          user_id: req.user.id,
+          lab_id: lab.id,
+          score,
+          total_questions: totalQuestions,
+          percentage,
+          passed,
+          answers: evaluatedAnswers,
+          simulation_config: simulationConfig || {}
+        })
+        .select('id')
+        .single();
+
+      if (!saveErr && savedResult) {
+        savedResultId = savedResult.id;
+      }
     }
 
     res.json({
       success: true,
-      resultId: savedResult ? savedResult._id : null,
+      resultId: savedResultId,
       score,
       totalQuestions,
       percentage,
@@ -167,22 +227,51 @@ exports.submitLabQuiz = async (req, res, next) => {
  */
 exports.getMyLabResults = async (req, res, next) => {
   try {
-    if (!req.user || !req.user._id) {
+    if (!req.user || !req.user.id) {
       return res.status(401).json({
         success: false,
         message: 'Authentication required'
       });
     }
 
-    const results = await LabResult.find({ userId: req.user._id })
-      .populate('labId', 'title titleHindi experimentType')
-      .sort({ createdAt: -1 })
+    const { data: results, error } = await supabaseAdmin
+      .from('lab_results')
+      .select(`
+        *,
+        labs:lab_id (
+          id, title, title_hindi, experiment_type
+        )
+      `)
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false })
       .limit(20);
+
+    if (error) throw error;
+
+    const formatted = (results || []).map(r => ({
+      _id: r.id,
+      id: r.id,
+      userId: r.user_id,
+      labId: r.labs ? {
+        _id: r.labs.id,
+        id: r.labs.id,
+        title: r.labs.title,
+        titleHindi: r.labs.title_hindi,
+        experimentType: r.labs.experiment_type
+      } : r.lab_id,
+      score: r.score,
+      totalQuestions: r.total_questions,
+      percentage: r.percentage,
+      passed: r.passed,
+      answers: r.answers || [],
+      simulationConfig: r.simulation_config || {},
+      createdAt: r.created_at
+    }));
 
     res.json({
       success: true,
-      count: results.length,
-      results
+      count: formatted.length,
+      results: formatted
     });
   } catch (error) {
     next(error);
