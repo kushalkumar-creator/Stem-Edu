@@ -75,3 +75,4 @@ async function checkMultiboard() {
 }
 
 checkMultiboard();
+

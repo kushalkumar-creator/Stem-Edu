@@ -11,6 +11,7 @@ const labRoutes = require('./labRoutes');
 const adminRoutes = require('./adminRoutes');
 const ragRoutes = require('./ragRoutes');
 const mentorRoutes = require('./mentorRoutes');
+const virtualRoutes = require('./virtualRoutes');
 const { aiRateLimiter } = require('../middleware/rateLimiter');
 
 const { getProfile, updateProfile } = require('../controllers/authController');
@@ -45,6 +46,9 @@ router.use('/', diagramRoutes);
 
 // Virtual Labs route (/api/labs)
 router.use('/labs', labRoutes);
+
+// Virtual Learning 3D Topics route (/api/virtual/*)
+router.use('/virtual', virtualRoutes);
 
 // RAG Knowledge Base routes (/api/rag/*)
 router.use('/rag', aiRateLimiter, ragRoutes);

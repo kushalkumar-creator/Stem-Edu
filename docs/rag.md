@@ -61,3 +61,4 @@ In semantic embeddings, two texts of different lengths discussing the same scien
 
 ### Q5: What is metadata filtering, and should it occur before or after vector similarity?
 **Answer:** Metadata filtering narrows the candidate vectors by structured columns (`board = 'CBSE'`, `class_level = 10`, `subject = 'physics'`). In `pgvector` with HNSW, our SQL function performs **pre-filtering** using compound B-Tree indexes on `(board, class_level, subject, language)`. Pre-filtering eliminates irrelevant classes and boards before computing vector distance, ensuring a Class 10 student never retrieves Class 12 derivations.
+

@@ -47,6 +47,26 @@ export default function Layout() {
           )}
 
           {user && (
+            <Link
+              to="/virtual-learning"
+              style={{
+                fontSize: '0.75rem',
+                backgroundColor: '#EEF2FF',
+                color: '#4338CA',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                fontWeight: '700',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <Sparkles size={12} color="#4338CA" /> 3D
+            </Link>
+          )}
+
+          {user && (
             <span
               style={{
                 fontSize: '0.75rem',

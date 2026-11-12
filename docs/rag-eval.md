@@ -42,3 +42,4 @@ This report evaluates the accuracy, retrieval precision, and isolation guarantee
 | Config B: 1500 char, $k=5$ | 100% | 100% | 85 ms | Moderate (surrounding irrelevant paragraphs included) |
 
 **Conclusion:** 1000 characters with 150-character overlap and $k=3$ provides the optimal signal-to-noise ratio for CBSE student doubt resolution, keeping prompt tokens compact and answers strictly grounded.
+

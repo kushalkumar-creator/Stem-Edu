@@ -289,6 +289,52 @@ export default function DashboardPage() {
             )}
           </div>
 
+          {/* Virtual Learning 3D Topics Banner (Task P2-8) */}
+          <div
+            className="card"
+            style={{
+              background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 100%)',
+              color: '#FFFFFF',
+              border: 'none',
+              padding: '16px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '16px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: '#FDE047', padding: '10px', borderRadius: '10px' }}>
+                <Cpu size={24} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#A5B4FC' }}>
+                  NEW FEATURE • 3D SIMULATIONS
+                </div>
+                <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#FFFFFF' }}>Virtual Learning 3D Labs</div>
+                <div style={{ color: '#C7D2FE', fontSize: '0.8rem' }}>Ray Optics, Conics, 3D Molecules & Human Heart</div>
+              </div>
+            </div>
+            <Link
+              to="/virtual-learning"
+              style={{
+                backgroundColor: '#FFFFFF',
+                color: '#312E81',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontWeight: '700',
+                fontSize: '0.85rem',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Explore 3D <ArrowRight size={14} />
+            </Link>
+          </div>
+
           {/* Quick 3D Virtual Lab Link */}
           <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

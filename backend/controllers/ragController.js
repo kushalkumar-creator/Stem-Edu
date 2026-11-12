@@ -163,3 +163,4 @@ exports.deleteStudentNote = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to delete note', error: err.message });
   }
 };
+
