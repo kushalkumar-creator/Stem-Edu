@@ -1,11 +1,113 @@
-# 🧪 STEM Edu — CBSE Class 10 Interactive Learning Platform
+# 🧪 STEM Edu — CBSE Class 10 & 12 Interactive Learning Platform (Phase 2)
 
-> A production-grade, bilingual (English & Hindi) STEM education platform for CBSE Class 10 students, featuring board-aligned lesson readers, Gemini AI summaries, timed MCQ practice tests, interactive touch SVG diagrams, 3D virtual physics simulations in Three.js, and a hand-written administrative content manager.
+> A production-grade, bilingual (English & Hindi) STEM education platform for CBSE Class 10 and Class 12 students across Mathematics, Physics, Chemistry, and Biology. Built on **Supabase** (Postgres + pgvector + Auth) and **Google Gemini 1.5 Flash**, featuring the **Saarthi AI Mentor & 24/7 Doubt Solver**, 9 Virtual Learning 3D simulations, 3D virtual experiments, a Text-to-Handwriting canvas studio with OCR, chapter video lectures, a Discord-style Community Hub, and offline PWA readiness.
 
-[![CI/Verification](https://img.shields.io/badge/PRD%20Acceptance%20Criteria-11%2F11%20Passed-success?style=flat-square)](./Tasks.md)
-[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg?style=flat-square)](./LICENSE)
-[![Curriculum](https://img.shields.io/badge/Curriculum-CBSE%20Class%2010%20STEM-orange?style=flat-square)](https://cbse.gov.in)
-[![Stack](https://img.shields.io/badge/Stack-React%20%7C%20Node%20%7C%20Express%20%7C%20MongoDB%20%7C%20Three.js-blueviolet?style=flat-square)](./Design.md)
+[![Release](https://img.shields.io/badge/Release-v2.0--phase2-success?style=flat-square)](./Task2.md)
+[![Database](https://img.shields.io/badge/Database-Supabase%20Postgres%20%7C%20pgvector-3ECF8E?style=flat-square)](https://supabase.com)
+[![Curriculum](https://img.shields.io/badge/Curriculum-CBSE%20Class%2010%20%26%2012-orange?style=flat-square)](https://cbse.gov.in)
+[![AI Engine](https://img.shields.io/badge/AI-Google%20Gemini%201.5%20Flash-4285F4?style=flat-square)](https://ai.google.dev)
+[![PWA](https://img.shields.io/badge/PWA-Offline%20Ready%20%7C%20IndexedDB-brightgreen?style=flat-square)](./docs/pwa.md)
+
+---
+
+## 🌟 What's New in Phase 2
+
+1. **🤖 Saarthi: AI Mentor & 24/7 Doubt Solver (RAG)**
+   - Answers STEM questions strictly grounded in NCERT CBSE textbooks with exact chapter and page citations.
+   - **Persistent Context Memory:** Remembers historical weak areas, goals, and explanations across sessions via `memory_facts`.
+   - **Photo Doubt OCR:** Snap or upload a photo of a textbook question; Gemini Vision transcribes formulas into editable text for instant step-by-step resolution.
+2. **🌀 9 Virtual Learning 3D Simulations (All 4 Subjects)**
+   - **Physics:** Light & Optics (spherical mirrors & lenses ray tracer), Waves & Sound (harmonic superposition & Web Audio API tone generator), Newton's Laws of Motion ($F=ma$ & momentum recoil).
+   - **Chemistry:** 3D Molecular Viewer & VSEPR geometry (Methane, Water, Ammonia, Benzene, $CO_2$).
+   - **Biology:** Human Heart & Double Circulation, Breathing & Alveolar Gas Exchange, Human Skeletal Framework & Antagonistic Muscle Flexion.
+   - **Mathematics:** Conic Sections (3D cone slicing: circle, ellipse, parabola, hyperbola), Trigonometric Unit Circle (ASTC quadrants & geometric projections).
+3. **🥽 3D Virtual Labs (CBSE Practicals)**
+   - **Acid-Base Titration Lab:** Burette with stopcock flow rate, phenolphthalein endpoint color transition, live $V$ vs pH curve, and $M_1V_1 = M_2V_2$ molarity calculation.
+   - **Compound Microscope Lab:** $10\times, 40\times, 100\times$ objective turret, coarse/fine focus knobs, dynamic optical Gaussian blur, and Onion Peel, Cheek Cell, Amoeba slides.
+   - **Simple Pendulum Lab:** Small-angle SHM, variable gravity (Earth, Moon, Jupiter).
+4. **✍️ Text-to-Handwriting Canvas Studio & Physical Notes OCR**
+   - Renders typed notes into realistic handwritten notebook pages with natural baseline and rotational jitter across 5 Google Fonts (`Caveat`, `Patrick Hand`, `Homemade Apple`, `Kalam`, `Indie Flower`).
+   - Export to PNG and multi-page printable PDF.
+5. **📝 Upgraded MCQ Diagnostic Engine**
+   - 144+ seeded curriculum questions across Class 10 & 12.
+   - Mixed subject, chapter, and timed test modes with CBSE negative marking ($-0.25$).
+   - Automatic Weak Topics Analysis (< 60% accuracy) synchronized directly to Saarthi's memory facts.
+6. **🎥 Video Learning Player & 💬 Community Hub**
+   - Chapter video lectures with timestamps, concept checkpoints that pause playback, and timestamped doubts.
+   - Discord-style subject study lounges (`#general-chat`, `#physics-lounge`, `#chemistry-lab`, `#biology-hub`, `#maths-den`) with automated `@saarthi` AI bot assistance.
+7. **📱 Progressive Web App (PWA) & Offline Capabilities**
+   - Web App Manifest, Service Worker caching, and IndexedDB local storage (Dexie.js) allowing offline test taking and note taking with reconnect sync.
+
+---
+
+## 🏗️ Technical Architecture & Stack
+
+- **Frontend:** React 18, Vite, Three.js, Lucide Icons, KaTeX, Canvas Confetti, `react-i18next`.
+- **Backend:** Node.js, Express.js, `@supabase/supabase-js`, `@google/generative-ai`.
+- **Database & Auth:** Supabase PostgreSQL 15, `pgvector` (768-dim HNSW cosine indexing), Supabase GoTrue Auth, Row Level Security (RLS).
+- **Offline Storage:** Service Worker Cache Storage + IndexedDB (`Dexie.js`).
+
+---
+
+## 🚀 Quickstart & Setup
+
+### 1. Prerequisites
+- **Node.js**: v18.0.0 or higher
+- **Supabase Project**: Free tier at [supabase.com](https://supabase.com)
+- **Google Gemini API Key**: Free tier at [aistudio.google.com](https://aistudio.google.com)
+
+### 2. Database Setup (Supabase SQL Editor)
+Run the numbered migrations in `backend/sql/` in sequence:
+1. `backend/sql/001_init.sql` (Enables `vector`, creates `profiles`, `chunks`, RLS policies)
+2. `backend/sql/002_curriculum.sql` (Creates subjects, chapters, lessons, questions)
+3. `backend/sql/005_phase2_features.sql` (Creates virtual topics, chat sessions, memories)
+4. `backend/sql/006_phase2_expansion.sql` (Creates attempts, notes, community channels)
+
+### 3. Environment Configuration
+In `backend/.env`:
+```env
+PORT=5000
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-publishable-key
+SUPABASE_SERVICE_ROLE_KEY=your-secret-service-role-key
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_VISION_MODEL=gemini-1.5-flash
+```
+
+### 4. Run Development Servers
+```bash
+# Terminal 1: Backend API Server
+cd Stem-Edu/backend
+npm install
+node server.js
+
+# Terminal 2: Frontend Vite Server
+cd Stem-Edu/frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173` in your browser.
+
+---
+
+## 🧪 Automated Testing
+Run the automated test suite covering physics formulas, mathematics identities, chemistry titration calculations, and live API endpoints:
+```bash
+cd Stem-Edu/backend
+node test-phase2-complete.js
+```
+
+---
+
+## 📚 Documentation Links
+- [Phase 2 Tasks Checklist (Task2.md)](./Task2.md)
+- [Comprehensive Viva Voce Sheet (25 Q&As)](./docs/viva.md)
+- [System Architecture & Data Flows](./docs/architecture.md)
+- [5-Minute Evaluator Demo Script](./docs/demo-script.md)
+- [PWA & Offline Architecture Guide](./docs/pwa.md)
+- [Text-to-Handwriting Engineering Guide](./docs/handwriting.md)
+- [Open-Source Licences & Credits](./content/credits.md)
 
 ---
 

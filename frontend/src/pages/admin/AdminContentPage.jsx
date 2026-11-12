@@ -776,6 +776,45 @@ export default function AdminContentPage() {
                 </select>
               </div>
 
+              {/* Board, Class Level & Language (Task P2-1.1) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '4px' }}>Board</label>
+                  <select
+                    value={chapterForm.board || 'CBSE'}
+                    onChange={(e) => setChapterForm({ ...chapterForm, board: e.target.value })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '0.85rem' }}
+                  >
+                    <option value="CBSE">CBSE</option>
+                    <option value="ICSE">ICSE</option>
+                    <option value="State Board">State Board</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '4px' }}>Class</label>
+                  <select
+                    value={chapterForm.classLevel || 10}
+                    onChange={(e) => setChapterForm({ ...chapterForm, classLevel: Number(e.target.value) })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '0.85rem' }}
+                  >
+                    <option value={10}>Class 10</option>
+                    <option value={12}>Class 12</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '4px' }}>Language</label>
+                  <select
+                    value={chapterForm.language || 'en'}
+                    onChange={(e) => setChapterForm({ ...chapterForm, language: e.target.value })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '0.85rem' }}
+                  >
+                    <option value="en">English</option>
+                    <option value="hi">Hindi</option>
+                    <option value="mr">Marathi</option>
+                  </select>
+                </div>
+              </div>
+
               {/* Title & Hindi Title */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
                 <div>
@@ -927,6 +966,45 @@ export default function AdminContentPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Board, Class Level & Language (Task P2-1.1) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '4px' }}>Board</label>
+                  <select
+                    value={lessonForm.board || 'CBSE'}
+                    onChange={(e) => setLessonForm({ ...lessonForm, board: e.target.value })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '0.85rem' }}
+                  >
+                    <option value="CBSE">CBSE</option>
+                    <option value="ICSE">ICSE</option>
+                    <option value="State Board">State Board</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '4px' }}>Class</label>
+                  <select
+                    value={lessonForm.classLevel || 10}
+                    onChange={(e) => setLessonForm({ ...lessonForm, classLevel: Number(e.target.value) })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '0.85rem' }}
+                  >
+                    <option value={10}>Class 10</option>
+                    <option value={12}>Class 12</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '4px' }}>Language</label>
+                  <select
+                    value={lessonForm.language || 'en'}
+                    onChange={(e) => setLessonForm({ ...lessonForm, language: e.target.value })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '0.85rem' }}
+                  >
+                    <option value="en">English</option>
+                    <option value="hi">Hindi</option>
+                    <option value="mr">Marathi</option>
+                  </select>
+                </div>
               </div>
 
               {/* Title & Hindi Title */}

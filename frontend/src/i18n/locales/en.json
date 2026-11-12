@@ -1,0 +1,66 @@
+{
+  "nav": {
+    "brand": "STEM Edu",
+    "dashboard": "Dashboard",
+    "subjects": "Subjects",
+    "labs": "Virtual Labs",
+    "mentor": "Saarthi AI",
+    "admin": "Admin",
+    "profile": "Profile",
+    "login": "Login",
+    "signup": "Sign Up",
+    "logout": "Log Out"
+  },
+  "landing": {
+    "heroTitle": "Master STEM with Hands-on Labs & AI Guidance",
+    "heroSubtitle": "CBSE Class 10 & 12 curriculum in English, Hindi, and regional languages. Interactive 3D simulations, bilingual lessons, and 24/7 AI mentoring by Saarthi.",
+    "ctaStart": "Start Learning Free",
+    "ctaExplore": "Explore Subjects",
+    "featuresTitle": "Why Learn With Us?",
+    "featureLessons": "Bilingual CBSE Lessons",
+    "featureLessonsDesc": "Step-by-step curriculum aligned to NCERT with touch-friendly diagrams and formulas.",
+    "featureLabs": "Interactive 3D Labs",
+    "featureLabsDesc": "Simulate real physics experiments directly in your browser with live parameters.",
+    "featureSaarthi": "Saarthi AI Mentor",
+    "featureSaarthiDesc": "24/7 doubt solving with citations from official textbooks and persistent memory.",
+    "featurePractice": "Smart MCQ Tests",
+    "featurePracticeDesc": "Instant feedback, detailed bilingual explanations, and weak-topic analysis."
+  },
+  "dashboard": {
+    "welcome": "Welcome back",
+    "learningProgress": "Your Learning Progress",
+    "classLevel": "Class",
+    "board": "Board",
+    "language": "Language",
+    "completedLessons": "Completed Lessons",
+    "averageScore": "Average Score",
+    "resumeLearning": "Continue Learning",
+    "recentActivity": "Recent Activity",
+    "viewAllSubjects": "View All Subjects",
+    "exploreLabs": "Explore 3D Virtual Labs",
+    "askSaarthi": "Ask Saarthi a Doubt"
+  },
+  "settings": {
+    "title": "Learning Preferences & Settings",
+    "boardLabel": "Educational Board",
+    "classLabel": "Class Level",
+    "languageLabel": "Preferred Language",
+    "save": "Save Preferences",
+    "savedSuccess": "Preferences saved successfully!",
+    "memoryToggle": "Enable Saarthi Long-term Memory",
+    "memoryDesc": "Allows Saarthi to remember your weak topics and goals across sessions."
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "submit": "Submit",
+    "next": "Next",
+    "previous": "Previous",
+    "back": "Back"
+  }
+}
+

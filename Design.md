@@ -887,3 +887,90 @@ Where:
    - Options: `A) Faster`, `B) Slower`, `C) At the same rate`, `D) Backwards`
    - Correct: `B` | Explanation: Since $g$ is in the denominator under the square root, smaller $g$ results in a longer time period $T$, meaning slower oscillations.
 
+
+
+---
+
+## 6. Phase 2 Architecture, Free-Tier Limits, New Tables & API Routes
+
+### 6.1 Locked Design Decisions (P2-0.2)
+- **AI Character Name:** **Saarthi** (Single AI persona serving as mentor, study planner, and 24/7 doubt solver).
+- **Target Classes:** CBSE **Class 10 and Class 12** across Mathematics, Physics, Chemistry, Biology.
+- **Languages:** English (`en`), Hindi (`hi`), and Marathi (`mr`).
+- **Database & Vector Store:** **Supabase PostgreSQL** with `pgvector` (`vector(768)` matching Gemini `text-embedding-004`).
+- **Video & Asset Hosting:** Cloudinary free tier, unlisted YouTube, or Supabase Storage.
+
+### 6.2 Free-Tier Limits & Quota Protection (P2-0.4)
+- **Google Gemini API Free Tier:**
+  - 15 Requests Per Minute (RPM)
+  - 1,500 Requests Per Day (RPD)
+  - 1,000,000 Tokens Per Minute (TPM)
+  - Mitigation: `aiRateLimiter` middleware (`express-rate-limit`) limits users to 30 requests per 15 minutes, with in-memory daily usage tracking.
+- **Supabase Free Tier:**
+  - Database Size: 500 MB (shared with vector embeddings)
+  - File Storage: 1 GB
+  - Monthly Active Users: 50,000
+  - Egress Bandwidth: 2 GB / month
+  - Auto-pausing: Inactive projects paused after 7 days; periodic health check prevents pause during development.
+
+### 6.3 Phase 2 Database Tables (Supabase PostgreSQL)
+1. `public.chunks`:
+   - `id uuid primary key`
+   - `content text not null`
+   - `content_hash text unique not null`
+   - `embedding vector(768)`
+   - `embedding_model text`
+   - `board text not null default 'CBSE'`
+   - `class_level int`
+   - `subject text`
+   - `chapter text`
+   - `page int`
+   - `language text not null default 'en'`
+   - `source text`
+   - `type text check (type in ('textbook', 'notes', 'question', 'video'))`
+   - `user_id uuid references auth.users(id) on delete cascade`
+2. `public.chat_sessions`:
+   - `id uuid primary key`
+   - `user_id uuid not null references auth.users(id) on delete cascade`
+   - `title text not null`
+   - `mode text not null default 'doubt' check (mode in ('doubt', 'mentor'))`
+   - `subject text`
+   - `created_at timestamptz default now()`
+3. `public.chat_messages`:
+   - `id uuid primary key`
+   - `session_id uuid not null references public.chat_sessions(id) on delete cascade`
+   - `user_id uuid not null references auth.users(id) on delete cascade`
+   - `role text not null check (role in ('user', 'assistant', 'system'))`
+   - `content text not null`
+   - `sources jsonb default '[]'::jsonb`
+   - `created_at timestamptz default now()`
+4. `public.memory_facts`:
+   - `id uuid primary key`
+   - `user_id uuid not null references auth.users(id) on delete cascade`
+   - `type text not null check (type in ('weakness', 'strength', 'goal', 'preference'))`
+   - `text text not null`
+   - `subject text`
+   - `importance int default 1`
+   - `embedding vector(768)`
+   - `created_at timestamptz default now()`
+   - `last_used_at timestamptz default now()`
+
+### 6.4 Phase 2 Navigation Routes & Pages
+- `/mentor` - Saarthi interactive chat interface with doubt & mentor modes
+- `/virtual-learning` - 3D visual interactive simulations gallery
+- `/virtual-learning/:topic` - Specific 3D simulation canvas (Ray Optics, Conic Cone, etc.)
+- `/labs` - 3D Virtual Science Labs catalogue
+- `/labs/:id` - Interactive lab workbench with HUD & observation quiz
+- `/videos` - AI video lectures and chapter recaps
+- `/community` - Discord community link & live study channels
+- `/notes/handwriting` - Text-to-handwriting canvas & handwritten notes OCR scanner
+- `/offline` - Offline study center with synced notes and quizzes
+
+### 6.5 Phase 2 REST API Routing
+- `POST /api/mentor/sessions` - Create chat session
+- `GET /api/mentor/sessions` - List student chat sessions
+- `POST /api/mentor/sessions/:id/messages` - Send message and retrieve Saarthi RAG response
+- `GET /api/mentor/memory` - View stored memory facts
+- `DELETE /api/mentor/memory/:id` - Forget specific memory fact
+- `POST /api/rag/query` - Vector similarity retrieval via `match_chunks`
+- `POST /api/rag/ingest` - Admin document ingestion & vector embedding

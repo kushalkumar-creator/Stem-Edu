@@ -38,7 +38,10 @@ export default function AdminQuestionsPage() {
     optionsHindi: ['', '', '', ''],
     correctIndex: 0,
     explanation: '',
-    difficulty: 'medium'
+    difficulty: 'medium',
+    board: 'CBSE',
+    classLevel: 10,
+    language: 'en'
   });
 
   // Load initial subjects
@@ -357,6 +360,45 @@ export default function AdminQuestionsPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Board, Class & Language Controls (P2-1.1) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '4px' }}>Board</label>
+                  <select
+                    value={form.board}
+                    onChange={(e) => setForm({ ...form, board: e.target.value })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '0.85rem' }}
+                  >
+                    <option value="CBSE">CBSE</option>
+                    <option value="ICSE">ICSE</option>
+                    <option value="State Board">State Board</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '4px' }}>Class</label>
+                  <select
+                    value={form.classLevel}
+                    onChange={(e) => setForm({ ...form, classLevel: Number(e.target.value) })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '0.85rem' }}
+                  >
+                    <option value={10}>Class 10</option>
+                    <option value={12}>Class 12</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', marginBottom: '4px' }}>Language</label>
+                  <select
+                    value={form.language}
+                    onChange={(e) => setForm({ ...form, language: e.target.value })}
+                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '0.85rem' }}
+                  >
+                    <option value="en">English</option>
+                    <option value="hi">Hindi</option>
+                    <option value="mr">Marathi</option>
+                  </select>
+                </div>
               </div>
 
               {/* Question Text */}

@@ -9,7 +9,10 @@ import {
   Award,
   RotateCcw,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  Sparkles,
+  Timer,
+  Clock
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -23,6 +26,7 @@ export default function PracticeTestPage() {
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({}); // { [questionId]: selectedOptionIndex }
+  const [negativeMarking, setNegativeMarking] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [testResult, setTestResult] = useState(null); // When submitted, holds scored result
@@ -86,7 +90,8 @@ export default function PracticeTestPage() {
 
       const result = await api.submitChapterTest(chapterId, {
         answers: answersPayload,
-        timeTakenSeconds
+        timeTakenSeconds,
+        negativeMarking
       });
 
       setTestResult(result);
@@ -327,6 +332,31 @@ export default function PracticeTestPage() {
                     {ans.explanation}
                   </div>
                 )}
+
+                {/* Saarthi Explanation Button (P2-5.5) */}
+                <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => {
+                      const studentChoiceText = options[ans.selectedOptionIndex] || 'None';
+                      const correctChoiceText = options[ans.correctOptionIndex] || 'Correct Option';
+                      const prompt = `I attempted this CBSE Class ${user?.classLevel || 10} question: "${ans.questionText || originalQuestion?.questionText}". I chose "${studentChoiceText}", but the correct answer is "${correctChoiceText}". Can you explain step by step why and teach me this concept clearly?`;
+                      navigate('/mentor', { state: { prefill: prompt, subject: originalQuestion?.subject || 'Science' } });
+                    }}
+                    className="btn btn-secondary"
+                    style={{
+                      width: 'auto',
+                      padding: '6px 14px',
+                      fontSize: '0.82rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      color: 'var(--color-primary)',
+                      border: '1px solid var(--color-primary)'
+                    }}
+                  >
+                    <Sparkles size={15} /> Explain with Saarthi
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -374,9 +404,20 @@ export default function PracticeTestPage() {
           <ArrowLeft size={16} /> Exit Test
         </button>
 
-        <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--color-muted)' }}>
-          Question {currentIndex + 1} of {questions.length}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--color-muted)' }}>
+            <input
+              type="checkbox"
+              checked={negativeMarking}
+              onChange={(e) => setNegativeMarking(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            <span>CBSE Negative Marking (-0.25)</span>
+          </label>
+          <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--color-muted)' }}>
+            Question {currentIndex + 1} of {questions.length}
+          </span>
+        </div>
       </div>
 
       {/* Test Progress Bar */}

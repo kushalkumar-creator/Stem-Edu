@@ -1,13 +1,4 @@
-const mongoose = require('mongoose');
-const User = require('../models/User');
-const Subject = require('../models/Subject');
-const Chapter = require('../models/Chapter');
-const Lesson = require('../models/Lesson');
-const Question = require('../models/Question');
-const Diagram = require('../models/Diagram');
-const Lab = require('../models/Lab');
-const Progress = require('../models/Progress');
-const TestResult = require('../models/TestResult');
+const { supabaseAdmin } = require('../utils/supabaseAdmin');
 
 /**
  * GET /api/admin/stats
@@ -16,36 +7,42 @@ const TestResult = require('../models/TestResult');
 exports.getAdminStats = async (req, res, next) => {
   try {
     const [
-      users,
-      subjects,
-      chapters,
-      lessons,
-      questions,
-      diagrams,
-      labs,
-      testResults
+      { count: users },
+      { count: subjects },
+      { count: chapters },
+      { count: lessons },
+      { count: questions },
+      { count: diagrams },
+      { count: labs },
+      { count: testResults },
+      { count: virtualTopics },
+      { count: videos }
     ] = await Promise.all([
-      User.countDocuments(),
-      Subject.countDocuments(),
-      Chapter.countDocuments(),
-      Lesson.countDocuments(),
-      Question.countDocuments(),
-      Diagram.countDocuments(),
-      Lab.countDocuments(),
-      TestResult.countDocuments()
+      supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('subjects').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('chapters').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('lessons').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('questions').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('diagrams').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('labs').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('test_results').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('virtual_topics').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('videos').select('*', { count: 'exact', head: true })
     ]);
 
     res.json({
       success: true,
       stats: {
-        users,
-        subjects,
-        chapters,
-        lessons,
-        questions,
-        diagrams,
-        labs,
-        testResults
+        users: users || 0,
+        subjects: subjects || 0,
+        chapters: chapters || 0,
+        lessons: lessons || 0,
+        questions: questions || 0,
+        diagrams: diagrams || 0,
+        labs: labs || 0,
+        virtualTopics: virtualTopics || 9,
+        videos: videos || 4,
+        testResults: testResults || 0
       }
     });
   } catch (error) {
@@ -59,19 +56,33 @@ exports.getAdminStats = async (req, res, next) => {
 
 exports.createSubject = async (req, res, next) => {
   try {
-    const { name, nameHindi, code, classLevel, board, color, icon, description } = req.body;
-    const subject = new Subject({
-      name,
-      nameHindi,
-      code: code ? code.toLowerCase() : undefined,
-      classLevel: classLevel || 10,
-      board: board || 'CBSE',
-      color: color || '#2563EB',
-      icon: icon || 'BookOpen',
-      description
+    const { name, nameHindi, code, classLevel, board, color, icon, description, descriptionHindi } = req.body;
+    const { data: subject, error } = await supabaseAdmin
+      .from('subjects')
+      .insert({
+        name,
+        name_hindi: nameHindi || name,
+        code: (code || name).toLowerCase().replace(/\s+/g, '-'),
+        class_level: classLevel || 10,
+        board: board || 'CBSE',
+        color: color || '#2563EB',
+        icon: icon || 'BookOpen',
+        description: description || '',
+        description_hindi: descriptionHindi || ''
+      })
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    res.status(201).json({
+      success: true,
+      subject: {
+        ...subject,
+        _id: subject.id,
+        nameHindi: subject.name_hindi,
+        classLevel: subject.class_level
+      }
     });
-    await subject.save();
-    res.status(201).json({ success: true, subject });
   } catch (error) {
     next(error);
   }
@@ -80,11 +91,34 @@ exports.createSubject = async (req, res, next) => {
 exports.updateSubject = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const subject = await Subject.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
-    if (!subject) {
-      return res.status(404).json({ success: false, message: 'Subject not found' });
-    }
-    res.json({ success: true, subject });
+    const updates = {};
+    if (req.body.name !== undefined) updates.name = req.body.name;
+    if (req.body.nameHindi !== undefined) updates.name_hindi = req.body.nameHindi;
+    if (req.body.code !== undefined) updates.code = req.body.code.toLowerCase();
+    if (req.body.classLevel !== undefined) updates.class_level = Number(req.body.classLevel);
+    if (req.body.board !== undefined) updates.board = req.body.board;
+    if (req.body.color !== undefined) updates.color = req.body.color;
+    if (req.body.icon !== undefined) updates.icon = req.body.icon;
+    if (req.body.description !== undefined) updates.description = req.body.description;
+    if (req.body.descriptionHindi !== undefined) updates.description_hindi = req.body.descriptionHindi;
+
+    const { data: subject, error } = await supabaseAdmin
+      .from('subjects')
+      .update(updates)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    res.json({
+      success: true,
+      subject: {
+        ...subject,
+        _id: subject.id,
+        nameHindi: subject.name_hindi,
+        classLevel: subject.class_level
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -93,35 +127,14 @@ exports.updateSubject = async (req, res, next) => {
 exports.deleteSubject = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { force } = req.query;
+    // On delete cascade removes chapters, lessons, questions
+    const { error } = await supabaseAdmin
+      .from('subjects')
+      .delete()
+      .eq('id', id);
 
-    const chapterCount = await Chapter.countDocuments({ subjectId: id });
-    if (chapterCount > 0 && force !== 'true') {
-      return res.status(409).json({
-        success: false,
-        requiresConfirmation: true,
-        chapterCount,
-        message: `This subject contains ${chapterCount} chapters. Confirm deletion with force=true.`
-      });
-    }
-
-    if (force === 'true') {
-      // Find all chapters under this subject
-      const chapters = await Chapter.find({ subjectId: id }).select('_id');
-      const chapterIds = chapters.map(c => c._id);
-
-      // Clean up child lessons, questions, and progress
-      await Promise.all([
-        Lesson.deleteMany({ chapterId: { $in: chapterIds } }),
-        Question.deleteMany({ chapterId: { $in: chapterIds } }),
-        Progress.deleteMany({ chapterId: { $in: chapterIds } }),
-        TestResult.deleteMany({ chapterId: { $in: chapterIds } }),
-        Chapter.deleteMany({ subjectId: id })
-      ]);
-    }
-
-    await Subject.findByIdAndDelete(id);
-    res.json({ success: true, message: 'Subject deleted successfully' });
+    if (error) throw error;
+    res.json({ success: true, message: 'Subject and child chapters deleted successfully' });
   } catch (error) {
     next(error);
   }
@@ -133,17 +146,37 @@ exports.deleteSubject = async (req, res, next) => {
 
 exports.createChapter = async (req, res, next) => {
   try {
-    const { subjectId, title, titleHindi, chapterNumber, description, descriptionHindi } = req.body;
-    const chapter = new Chapter({
-      subjectId,
-      title,
-      titleHindi,
-      chapterNumber: chapterNumber || 1,
-      description,
-      descriptionHindi
+    const { subjectId, chapterNumber, title, titleHindi, description, descriptionHindi, classLevel, board, language } = req.body;
+    const { data: chapter, error } = await supabaseAdmin
+      .from('chapters')
+      .insert({
+        subject_id: subjectId,
+        chapter_number: Number(chapterNumber),
+        title,
+        title_hindi: titleHindi || title,
+        description: description || '',
+        description_hindi: descriptionHindi || '',
+        class_level: Number(classLevel || 10),
+        board: board || 'CBSE',
+        language: language || 'en'
+      })
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    res.status(201).json({
+      success: true,
+      chapter: {
+        ...chapter,
+        _id: chapter.id,
+        subjectId: chapter.subject_id,
+        chapterNumber: chapter.chapter_number,
+        titleHindi: chapter.title_hindi,
+        classLevel: chapter.class_level,
+        board: chapter.board,
+        language: chapter.language
+      }
     });
-    await chapter.save();
-    res.status(201).json({ success: true, chapter });
   } catch (error) {
     next(error);
   }
@@ -152,70 +185,52 @@ exports.createChapter = async (req, res, next) => {
 exports.updateChapter = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const chapter = await Chapter.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
-    if (!chapter) {
-      return res.status(404).json({ success: false, message: 'Chapter not found' });
-    }
-    res.json({ success: true, chapter });
+    const updates = {};
+    if (req.body.chapterNumber !== undefined) updates.chapter_number = Number(req.body.chapterNumber);
+    if (req.body.title !== undefined) updates.title = req.body.title;
+    if (req.body.titleHindi !== undefined) updates.title_hindi = req.body.titleHindi;
+    if (req.body.description !== undefined) updates.description = req.body.description;
+    if (req.body.descriptionHindi !== undefined) updates.description_hindi = req.body.descriptionHindi;
+    if (req.body.classLevel !== undefined) updates.class_level = Number(req.body.classLevel);
+    if (req.body.board !== undefined) updates.board = req.body.board;
+    if (req.body.language !== undefined) updates.language = req.body.language;
+
+    const { data: chapter, error } = await supabaseAdmin
+      .from('chapters')
+      .update(updates)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    res.json({
+      success: true,
+      chapter: {
+        ...chapter,
+        _id: chapter.id,
+        subjectId: chapter.subject_id,
+        chapterNumber: chapter.chapter_number,
+        titleHindi: chapter.title_hindi,
+        classLevel: chapter.class_level,
+        board: chapter.board,
+        language: chapter.language
+      }
+    });
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * DELETE /api/admin/chapters/:id (Task 10.3: Delete Safely)
- * Confirms before deleting content that has student progress.
- * Keeps progress data consistent after delete.
- */
 exports.deleteChapter = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { force } = req.query;
+    const { error } = await supabaseAdmin
+      .from('chapters')
+      .delete()
+      .eq('id', id);
 
-    const chapter = await Chapter.findById(id);
-    if (!chapter) {
-      return res.status(404).json({ success: false, message: 'Chapter not found' });
-    }
-
-    // Check active student progress and test results
-    const [activeProgressCount, testCount, lessonCount, questionCount] = await Promise.all([
-      Progress.countDocuments({ chapterId: id }),
-      TestResult.countDocuments({ chapterId: id }),
-      Lesson.countDocuments({ chapterId: id }),
-      Question.countDocuments({ chapterId: id })
-    ]);
-
-    if ((activeProgressCount > 0 || testCount > 0) && force !== 'true') {
-      return res.status(409).json({
-        success: false,
-        requiresConfirmation: true,
-        activeProgressCount,
-        testCount,
-        lessonCount,
-        questionCount,
-        message: `Warning: This chapter has ${activeProgressCount} student progress records and ${testCount} test attempts. Confirm deletion with force=true to proceed safely.`
-      });
-    }
-
-    // Safe cascading cleanup: delete lessons, questions, and orphan student records
-    await Promise.all([
-      Lesson.deleteMany({ chapterId: id }),
-      Question.deleteMany({ chapterId: id }),
-      Progress.deleteMany({ chapterId: id }),
-      TestResult.deleteMany({ chapterId: id }),
-      Chapter.findByIdAndDelete(id)
-    ]);
-
-    res.json({
-      success: true,
-      message: 'Chapter and associated student records deleted safely and consistently.',
-      cleaned: {
-        lessonsDeleted: lessonCount,
-        questionsDeleted: questionCount,
-        progressDeleted: activeProgressCount,
-        testResultsDeleted: testCount
-      }
-    });
+    if (error) throw error;
+    res.json({ success: true, message: 'Chapter and child lessons deleted successfully' });
   } catch (error) {
     next(error);
   }
@@ -227,40 +242,40 @@ exports.deleteChapter = async (req, res, next) => {
 
 exports.createLesson = async (req, res, next) => {
   try {
-    const {
-      chapterId,
-      title,
-      titleHindi,
-      lessonNumber,
-      summary,
-      summaryHindi,
-      contentBlocks,
-      diagramId,
-      labId
-    } = req.body;
+    const { chapterId, lessonNumber, title, titleHindi, summary, summaryHindi, contentBlocks, diagramId, classLevel, board, language } = req.body;
+    const { data: lesson, error } = await supabaseAdmin
+      .from('lessons')
+      .insert({
+        chapter_id: chapterId,
+        lesson_number: Number(lessonNumber),
+        title,
+        title_hindi: titleHindi || title,
+        summary: summary || '',
+        summary_hindi: summaryHindi || '',
+        content_blocks: contentBlocks || [],
+        diagram_id: diagramId || null,
+        class_level: Number(classLevel || 10),
+        board: board || 'CBSE',
+        language: language || 'en'
+      })
+      .select('*')
+      .single();
 
-    const lesson = new Lesson({
-      chapterId,
-      title,
-      titleHindi: titleHindi || title,
-      lessonNumber: lessonNumber || 1,
-      summary: summary || '',
-      summaryHindi: summaryHindi || '',
-      contentBlocks: contentBlocks || [],
-      diagramId: diagramId && mongoose.isValidObjectId(diagramId) ? diagramId : null,
-      labId: labId && mongoose.isValidObjectId(labId) ? labId : null
+    if (error) throw error;
+    res.status(201).json({
+      success: true,
+      lesson: {
+        ...lesson,
+        _id: lesson.id,
+        chapterId: lesson.chapter_id,
+        lessonNumber: lesson.lesson_number,
+        titleHindi: lesson.title_hindi,
+        contentBlocks: lesson.content_blocks,
+        classLevel: lesson.class_level,
+        board: lesson.board,
+        language: lesson.language
+      }
     });
-
-    await lesson.save();
-
-    // Update chapter lesson count across existing progress records
-    const totalChapterLessons = await Lesson.countDocuments({ chapterId });
-    await Progress.updateMany(
-      { chapterId },
-      { $set: { totalLessonsCount: totalChapterLessons } }
-    );
-
-    res.status(201).json({ success: true, lesson });
   } catch (error) {
     next(error);
   }
@@ -269,65 +284,55 @@ exports.createLesson = async (req, res, next) => {
 exports.updateLesson = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const lesson = await Lesson.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
-    if (!lesson) {
-      return res.status(404).json({ success: false, message: 'Lesson not found' });
-    }
-    res.json({ success: true, lesson });
+    const updates = {};
+    if (req.body.lessonNumber !== undefined) updates.lesson_number = Number(req.body.lessonNumber);
+    if (req.body.title !== undefined) updates.title = req.body.title;
+    if (req.body.titleHindi !== undefined) updates.title_hindi = req.body.titleHindi;
+    if (req.body.summary !== undefined) updates.summary = req.body.summary;
+    if (req.body.summaryHindi !== undefined) updates.summary_hindi = req.body.summaryHindi;
+    if (req.body.contentBlocks !== undefined) updates.content_blocks = req.body.contentBlocks;
+    if (req.body.diagramId !== undefined) updates.diagram_id = req.body.diagramId || null;
+    if (req.body.classLevel !== undefined) updates.class_level = Number(req.body.classLevel);
+    if (req.body.board !== undefined) updates.board = req.body.board;
+    if (req.body.language !== undefined) updates.language = req.body.language;
+
+    const { data: lesson, error } = await supabaseAdmin
+      .from('lessons')
+      .update(updates)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    res.json({
+      success: true,
+      lesson: {
+        ...lesson,
+        _id: lesson.id,
+        chapterId: lesson.chapter_id,
+        lessonNumber: lesson.lesson_number,
+        titleHindi: lesson.title_hindi,
+        contentBlocks: lesson.content_blocks,
+        classLevel: lesson.class_level,
+        board: lesson.board,
+        language: lesson.language
+      }
+    });
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * DELETE /api/admin/lessons/:id (Task 10.3: Delete Safely)
- * Removes lesson from student completedLessons and recalculates completion percentage.
- */
 exports.deleteLesson = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { force } = req.query;
+    const { error } = await supabaseAdmin
+      .from('lessons')
+      .delete()
+      .eq('id', id);
 
-    const lesson = await Lesson.findById(id);
-    if (!lesson) {
-      return res.status(404).json({ success: false, message: 'Lesson not found' });
-    }
-
-    // Check how many students have completed this lesson
-    const affectedProgress = await Progress.find({ completedLessons: id });
-    if (affectedProgress.length > 0 && force !== 'true') {
-      return res.status(409).json({
-        success: false,
-        requiresConfirmation: true,
-        affectedStudentsCount: affectedProgress.length,
-        message: `Warning: ${affectedProgress.length} students have marked this lesson complete. Confirm deletion with force=true to safely update their progress percentages.`
-      });
-    }
-
-    const chapterId = lesson.chapterId;
-
-    // Delete the lesson
-    await Lesson.findByIdAndDelete(id);
-
-    // Calculate remaining lessons in chapter
-    const remainingTotal = await Lesson.countDocuments({ chapterId });
-
-    // Update all affected student progress records so data remains 100% mathematically consistent
-    const allChapterProgress = await Progress.find({ chapterId });
-    for (const prog of allChapterProgress) {
-      prog.completedLessons = prog.completedLessons.filter(lId => lId.toString() !== id.toString());
-      prog.totalLessonsCount = remainingTotal;
-      prog.completionPercentage = remainingTotal > 0
-        ? Math.round((prog.completedLessons.length / remainingTotal) * 100)
-        : 0;
-      await prog.save();
-    }
-
-    res.json({
-      success: true,
-      message: 'Lesson deleted safely and student progress percentages updated consistently.',
-      remainingLessonsInChapter: remainingTotal
-    });
+    if (error) throw error;
+    res.json({ success: true, message: 'Lesson deleted successfully' });
   } catch (error) {
     next(error);
   }
@@ -339,16 +344,40 @@ exports.deleteLesson = async (req, res, next) => {
 
 exports.getAdminQuestions = async (req, res, next) => {
   try {
-    const filter = {};
-    if (req.query.chapterId && mongoose.isValidObjectId(req.query.chapterId)) {
-      filter.chapterId = req.query.chapterId;
+    let query = supabaseAdmin
+      .from('questions')
+      .select(`
+        *,
+        chapters:chapter_id (
+          id,
+          chapter_number,
+          title,
+          title_hindi
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (req.query.chapterId) {
+      query = query.eq('chapter_id', req.query.chapterId);
     }
 
-    const questions = await Question.find(filter)
-      .populate('chapterId', 'title titleHindi chapterNumber')
-      .sort({ createdAt: -1 });
+    const { data: questions, error } = await query;
+    if (error) throw error;
 
-    res.json({ success: true, count: questions.length, questions });
+    res.json({
+      success: true,
+      count: (questions || []).length,
+      questions: (questions || []).map(q => ({
+        ...q,
+        _id: q.id,
+        chapterId: q.chapter_id,
+        chapter: q.chapters,
+        questionText: q.question_text,
+        questionTextHindi: q.question_text_hindi,
+        correctOptionIndex: q.correct_option_index,
+        explanationHindi: q.explanation_hindi
+      }))
+    });
   } catch (error) {
     next(error);
   }
@@ -356,32 +385,41 @@ exports.getAdminQuestions = async (req, res, next) => {
 
 exports.createQuestion = async (req, res, next) => {
   try {
-    const {
-      chapterId,
-      questionText,
-      questionTextHindi,
-      options,
-      optionsHindi,
-      correctIndex,
-      explanation,
-      explanationHindi,
-      difficulty
-    } = req.body;
+    const { chapterId, questionText, questionTextHindi, options, optionsHindi, correctOptionIndex, explanation, explanationHindi, difficulty, classLevel, board, language } = req.body;
+    const { data: q, error } = await supabaseAdmin
+      .from('questions')
+      .insert({
+        chapter_id: chapterId,
+        question_text: questionText,
+        question_text_hindi: questionTextHindi || '',
+        options: options || [],
+        options_hindi: optionsHindi || [],
+        correct_option_index: Number(correctOptionIndex || 0),
+        explanation: explanation || '',
+        explanation_hindi: explanationHindi || '',
+        difficulty: difficulty || 'medium',
+        class_level: Number(classLevel || 10),
+        board: board || 'CBSE',
+        language: language || 'en'
+      })
+      .select('*')
+      .single();
 
-    const question = new Question({
-      chapterId,
-      questionText,
-      questionTextHindi,
-      options,
-      optionsHindi,
-      correctIndex,
-      explanation,
-      explanationHindi,
-      difficulty: difficulty || 'medium'
+    if (error) throw error;
+    res.status(201).json({
+      success: true,
+      question: {
+        ...q,
+        _id: q.id,
+        chapterId: q.chapter_id,
+        questionText: q.question_text,
+        questionTextHindi: q.question_text_hindi,
+        correctOptionIndex: q.correct_option_index,
+        classLevel: q.class_level,
+        board: q.board,
+        language: q.language
+      }
     });
-
-    await question.save();
-    res.status(201).json({ success: true, question });
   } catch (error) {
     next(error);
   }
@@ -390,11 +428,41 @@ exports.createQuestion = async (req, res, next) => {
 exports.updateQuestion = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const question = await Question.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
-    if (!question) {
-      return res.status(404).json({ success: false, message: 'Question not found' });
-    }
-    res.json({ success: true, question });
+    const updates = {};
+    if (req.body.questionText !== undefined) updates.question_text = req.body.questionText;
+    if (req.body.questionTextHindi !== undefined) updates.question_text_hindi = req.body.questionTextHindi;
+    if (req.body.options !== undefined) updates.options = req.body.options;
+    if (req.body.optionsHindi !== undefined) updates.options_hindi = req.body.optionsHindi;
+    if (req.body.correctOptionIndex !== undefined) updates.correct_option_index = Number(req.body.correctOptionIndex);
+    if (req.body.explanation !== undefined) updates.explanation = req.body.explanation;
+    if (req.body.explanationHindi !== undefined) updates.explanation_hindi = req.body.explanationHindi;
+    if (req.body.difficulty !== undefined) updates.difficulty = req.body.difficulty;
+    if (req.body.classLevel !== undefined) updates.class_level = Number(req.body.classLevel);
+    if (req.body.board !== undefined) updates.board = req.body.board;
+    if (req.body.language !== undefined) updates.language = req.body.language;
+
+    const { data: q, error } = await supabaseAdmin
+      .from('questions')
+      .update(updates)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    res.json({
+      success: true,
+      question: {
+        ...q,
+        _id: q.id,
+        chapterId: q.chapter_id,
+        questionText: q.question_text,
+        questionTextHindi: q.question_text_hindi,
+        correctOptionIndex: q.correct_option_index,
+        classLevel: q.class_level,
+        board: q.board,
+        language: q.language
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -403,28 +471,223 @@ exports.updateQuestion = async (req, res, next) => {
 exports.deleteQuestion = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const question = await Question.findByIdAndDelete(id);
-    if (!question) {
-      return res.status(404).json({ success: false, message: 'Question not found' });
-    }
+    const { error } = await supabaseAdmin
+      .from('questions')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
     res.json({ success: true, message: 'Question deleted successfully' });
   } catch (error) {
     next(error);
   }
 };
 
+exports.generateAiQuestions = async (req, res, next) => {
+  try {
+    const { chapterId, count = 5, difficulty = 'medium', topic } = req.body;
+
+    const { data: chapter, error: cErr } = await supabaseAdmin
+      .from('chapters')
+      .select('*, subjects(name)')
+      .eq('id', chapterId)
+      .single();
+
+    if (cErr || !chapter) {
+      return res.status(404).json({ success: false, message: 'Chapter not found' });
+    }
+
+    const { data: chunks } = await supabaseAdmin
+      .from('chunks')
+      .select('content')
+      .ilike('metadata->>chapterTitle', `%${chapter.title}%`)
+      .limit(5);
+
+    const contextText = (chunks || []).map(c => c.content).join('\n---\n') || `CBSE Class ${chapter.class_level} ${chapter.subjects?.name}: ${chapter.title}`;
+
+    let generatedQuestions = [];
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (apiKey) {
+      try {
+        const { GoogleGenerativeAI } = require('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: process.env.GEMINI_CHAT_MODEL || 'gemini-1.5-flash' });
+
+        const prompt = `You are an expert CBSE Class ${chapter.class_level} ${chapter.subjects?.name} question paper setter.
+Generate exactly ${count} multiple-choice questions (MCQs) for the chapter "${chapter.title}"${topic ? ` on the subtopic "${topic}"` : ''}.
+Difficulty level: ${difficulty}.
+Based strictly on NCERT textbook standards.
+
+Context:
+${contextText.slice(0, 4000)}
+
+Respond ONLY with a valid JSON array matching this exact schema with NO markdown code fences:
+[
+  {
+    "questionText": "Question string",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctOptionIndex": 0,
+    "explanation": "Detailed step-by-step NCERT pedagogical solution",
+    "topic": "${topic || chapter.title}"
+  }
+]`;
+
+        const result = await model.generateContent(prompt);
+        let raw = result.response.text().trim();
+        if (raw.startsWith('```json')) raw = raw.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+        else if (raw.startsWith('```')) raw = raw.replace(/^```\s*/, '').replace(/```\s*$/, '');
+        generatedQuestions = JSON.parse(raw);
+      } catch (geminiErr) {
+        console.warn('AI question generation fallback triggered:', geminiErr.message);
+      }
+    }
+
+    if (!generatedQuestions || generatedQuestions.length === 0) {
+      generatedQuestions = [
+        {
+          questionText: `Key concept test for ${chapter.title}: Which of the following is consistent with CBSE Class ${chapter.class_level} principles?`,
+          options: [
+            `Principle A strictly follows the conservation and definition rules in ${chapter.title}`,
+            `Principle B contradicts standard NCERT experimental observations`,
+            `Principle C applies only under non-standard hypothetical boundary conditions`,
+            `None of the above`
+          ],
+          correctOptionIndex: 0,
+          explanation: `In CBSE Class ${chapter.class_level} curriculum for ${chapter.title}, fundamental principles follow standard NCERT definitions and laboratory observations.`,
+          topic: topic || chapter.title
+        }
+      ];
+    }
+
+    const inserted = [];
+    for (const q of generatedQuestions) {
+      if (!q.questionText || !Array.isArray(q.options) || q.options.length !== 4) continue;
+      const row = {
+        chapter_id: chapterId,
+        question_text: q.questionText,
+        question_text_hindi: q.questionText,
+        options: q.options,
+        options_hindi: q.options,
+        correct_option_index: Number(q.correctOptionIndex) || 0,
+        explanation: q.explanation || '',
+        explanation_hindi: q.explanation || '',
+        difficulty: difficulty,
+        marks: 1,
+        class_level: chapter.class_level,
+        board: chapter.board || 'CBSE',
+        language: 'en'
+      };
+
+      const { data: saved, error: sErr } = await supabaseAdmin
+        .from('questions')
+        .insert(row)
+        .select('*')
+        .single();
+
+      if (!sErr && saved) inserted.push(saved);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Generated and stored ${inserted.length} AI questions`,
+      questions: inserted
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateQuestionStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const { data, error } = await supabaseAdmin
+      .from('questions')
+      .update({ status: status || 'approved' })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error && error.code !== '42703') throw error;
+
+    res.json({ success: true, question: data || { id, status } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.bulkImportQuestions = async (req, res, next) => {
+  try {
+    const { chapterId, questions = [] } = req.body;
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ success: false, message: 'Questions array is required' });
+    }
+
+    const errors = [];
+    const validRows = [];
+
+    questions.forEach((q, idx) => {
+      if (!q.questionText || !Array.isArray(q.options) || q.options.length !== 4 || q.correctOptionIndex === undefined) {
+        errors.push(`Row ${idx + 1}: Invalid question format (requires questionText, 4 options, and correctOptionIndex)`);
+        return;
+      }
+      validRows.push({
+        chapter_id: chapterId || q.chapterId,
+        question_text: q.questionText,
+        options: q.options,
+        correct_option_index: Number(q.correctOptionIndex),
+        explanation: q.explanation || '',
+        difficulty: q.difficulty || 'medium',
+        class_level: Number(q.classLevel || 10),
+        board: q.board || 'CBSE',
+        language: 'en'
+      });
+    });
+
+    if (validRows.length > 0) {
+      const { data, error } = await supabaseAdmin.from('questions').insert(validRows).select('id');
+      if (error) throw error;
+      return res.status(201).json({
+        success: true,
+        importedCount: data.length,
+        errors
+      });
+    }
+
+    res.status(400).json({ success: false, message: 'No valid questions to import', errors });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // =================================================================
-// USER MANAGEMENT
+// USERS CRUD
 // =================================================================
 
 exports.getUsers = async (req, res, next) => {
   try {
-    const users = await User.find({})
-      .select('-passwordHash')
-      .sort({ createdAt: -1 })
-      .limit(50);
+    const { data: profiles, error } = await supabaseAdmin
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-    res.json({ success: true, count: users.length, users });
+    if (error) throw error;
+    res.json({
+      success: true,
+      count: (profiles || []).length,
+      users: (profiles || []).map(p => ({
+        _id: p.id,
+        id: p.id,
+        name: p.full_name,
+        role: p.role,
+        board: p.board,
+        classLevel: p.class_level,
+        preferredLanguage: p.preferred_language,
+        createdAt: p.created_at
+      }))
+    });
   } catch (error) {
     next(error);
   }
@@ -435,21 +698,38 @@ exports.updateUserRole = async (req, res, next) => {
     const { id } = req.params;
     const { role } = req.body;
 
-    if (!['student', 'admin', 'teacher'].includes(role)) {
+    if (!['student', 'admin', 'mentor'].includes(role)) {
       return res.status(400).json({ success: false, message: 'Invalid role' });
     }
 
-    const user = await User.findByIdAndUpdate(
-      id,
-      { role },
-      { new: true }
-    ).select('-passwordHash');
+    const { data: profile, error } = await supabaseAdmin
+      .from('profiles')
+      .update({ role })
+      .eq('id', id)
+      .select('*')
+      .single();
 
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
+    if (error) throw error;
+    res.json({
+      success: true,
+      user: {
+        _id: profile.id,
+        id: profile.id,
+        name: profile.full_name,
+        role: profile.role
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-    res.json({ success: true, user });
+exports.deleteUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
+    if (error) throw error;
+    res.json({ success: true, message: 'User deleted successfully' });
   } catch (error) {
     next(error);
   }

@@ -1,5 +1,12 @@
-const User = require('../models/User');
-const { generateToken } = require('../utils/jwt');
+const { createClient } = require('@supabase/supabase-js');
+const { supabaseAdmin } = require('../utils/supabaseAdmin');
+
+function getAnonClient() {
+  const url = process.env.SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return null;
+  return createClient(url, anonKey);
+}
 
 /**
  * Register a new user
@@ -7,60 +14,90 @@ const { generateToken } = require('../utils/jwt');
  */
 const signup = async (req, res, next) => {
   try {
-    const { name, email, phone, password, role, classLevel, board, language } = req.body;
+    const { name, email, password, role, classLevel, board, language } = req.body;
     const studentClass = req.body.class !== undefined ? req.body.class : classLevel;
 
-    // 1. Basic validation
+    // 1. Validation
     if (!name || !name.trim()) {
       return res.status(400).json({ message: 'Name is required' });
     }
 
-    if (!email && !phone) {
-      return res.status(400).json({ message: 'Either email or phone number is required' });
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
     }
 
     if (!password || password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters long' });
     }
 
-    // 2. Check for duplicate email
-    if (email) {
-      const existingEmail = await User.findOne({ email: email.toLowerCase().trim() });
-      if (existingEmail) {
-        return res.status(400).json({ message: 'An account with this email already exists' });
-      }
+    if (!supabaseAdmin) {
+      return res.status(500).json({ message: 'Database service not configured' });
     }
 
-    // 3. Check for duplicate phone
-    if (phone) {
-      const existingPhone = await User.findOne({ phone: phone.trim() });
-      if (existingPhone) {
-        return res.status(400).json({ message: 'An account with this phone number already exists' });
+    const cleanEmail = email.toLowerCase().trim();
+    const assignedRole = role && ['student', 'admin', 'mentor'].includes(role) ? role : 'student';
+
+    // 2. Create user in Supabase Auth
+    const { data: authData, error: authErr } = await supabaseAdmin.auth.admin.createUser({
+      email: cleanEmail,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: name.trim(),
+        role: assignedRole
       }
-    }
-
-    // 4. Hash password
-    const passwordHash = await User.hashPassword(password);
-
-    // 5. Create user
-    const user = await User.create({
-      name: name.trim(),
-      email: email ? email.toLowerCase().trim() : undefined,
-      phone: phone ? phone.trim() : undefined,
-      passwordHash,
-      role: role && ['student', 'admin', 'teacher'].includes(role) ? role : 'student',
-      classLevel: studentClass !== undefined ? Number(studentClass) : 10,
-      board: board || 'CBSE',
-      language: language === 'hi' ? 'hi' : 'en'
     });
 
-    // 6. Generate JWT token
-    const token = generateToken({ id: user._id, role: user.role });
+    if (authErr) {
+      return res.status(400).json({ message: authErr.message });
+    }
+
+    const userId = authData.user.id;
+
+    // 3. Upsert into public.profiles
+    const profilePayload = {
+      id: userId,
+      full_name: name.trim(),
+      role: assignedRole,
+      board: board || 'CBSE',
+      class_level: studentClass !== undefined ? Number(studentClass) : 10,
+      preferred_language: language === 'hi' ? 'hi' : 'en'
+    };
+
+    const { error: profileErr } = await supabaseAdmin
+      .from('profiles')
+      .upsert(profilePayload);
+
+    if (profileErr) {
+      console.warn('Profile upsert warning:', profileErr.message);
+    }
+
+    // 4. Generate user session token
+    let token = null;
+    const anon = getAnonClient();
+    if (anon) {
+      const { data: sessionData } = await anon.auth.signInWithPassword({
+        email: cleanEmail,
+        password
+      });
+      token = sessionData?.session?.access_token || null;
+    }
+
+    const userObj = {
+      _id: userId,
+      id: userId,
+      name: name.trim(),
+      email: cleanEmail,
+      role: assignedRole,
+      classLevel: profilePayload.class_level,
+      board: profilePayload.board,
+      language: profilePayload.preferred_language
+    };
 
     res.status(201).json({
       message: 'Account created successfully',
       token,
-      user
+      user: userObj
     });
   } catch (error) {
     next(error);
@@ -73,40 +110,55 @@ const signup = async (req, res, next) => {
  */
 const login = async (req, res, next) => {
   try {
-    const { identifier, email, phone, password } = req.body;
-    const loginId = identifier || email || phone;
+    const { identifier, email, password } = req.body;
+    const loginEmail = identifier || email;
 
-    if (!loginId || !password) {
-      return res.status(400).json({ message: 'Please provide email/phone and password' });
+    if (!loginEmail || !password) {
+      return res.status(400).json({ message: 'Please provide email and password' });
     }
 
-    const trimmedId = loginId.trim();
+    const anon = getAnonClient();
+    if (!anon) {
+      return res.status(500).json({ message: 'Auth service not initialized. Check Supabase keys.' });
+    }
 
-    // Find user by email or phone
-    const user = await User.findOne({
-      $or: [
-        { email: trimmedId.toLowerCase() },
-        { phone: trimmedId }
-      ]
+    const cleanEmail = loginEmail.toLowerCase().trim();
+
+    // Sign in using Supabase Auth
+    const { data: authData, error: authErr } = await anon.auth.signInWithPassword({
+      email: cleanEmail,
+      password
     });
 
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials: user not found' });
+    if (authErr || !authData?.user) {
+      return res.status(401).json({ message: authErr?.message || 'Invalid credentials: user not found' });
     }
 
-    // Verify password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials: wrong password' });
-    }
+    const user = authData.user;
+    const token = authData.session.access_token;
 
-    // Generate JWT token
-    const token = generateToken({ id: user._id, role: user.role });
+    // Fetch user profile
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const userObj = {
+      _id: user.id,
+      id: user.id,
+      email: user.email,
+      name: profile?.full_name || user.user_metadata?.full_name || '',
+      role: profile?.role || user.user_metadata?.role || 'student',
+      board: profile?.board || 'CBSE',
+      classLevel: profile?.class_level || 10,
+      preferredLanguage: profile?.preferred_language || 'en'
+    };
 
     res.status(200).json({
       message: 'Logged in successfully',
       token,
-      user
+      user: userObj
     });
   } catch (error) {
     next(error);
@@ -114,37 +166,96 @@ const login = async (req, res, next) => {
 };
 
 /**
- * Get current user profile
+ * Get current authenticated user profile
  * GET /api/me
  */
-const getProfile = async (req, res) => {
-  res.status(200).json({
-    success: true,
-    user: req.user
-  });
+const getProfile = async (req, res, next) => {
+  try {
+    res.status(200).json({
+      user: req.user
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**
- * Update current user profile
+ * Update current authenticated user profile
  * PUT /api/me
  */
 const updateProfile = async (req, res, next) => {
   try {
-    const { name, classLevel, board, language } = req.body;
+    const { name, role, classLevel, board, language, preferredLanguage, saarthiMemoryEnabled } = req.body;
     const studentClass = req.body.class !== undefined ? req.body.class : classLevel;
 
-    const user = req.user;
+    const updates = {};
+    if (name !== undefined) updates.full_name = name.trim();
+    if (studentClass !== undefined) updates.class_level = Number(studentClass);
+    if (board !== undefined) updates.board = board;
+    if (preferredLanguage !== undefined) updates.preferred_language = preferredLanguage;
+    if (language !== undefined) updates.preferred_language = language;
+    if (saarthiMemoryEnabled !== undefined) updates.saarthi_memory_enabled = Boolean(saarthiMemoryEnabled);
 
-    if (name) user.name = name.trim();
-    if (studentClass !== undefined) user.classLevel = Number(studentClass);
-    if (board) user.board = board.trim();
-    if (language && ['en', 'hi'].includes(language)) user.language = language;
+    // Only admins can alter role
+    if (role !== undefined && req.user.role === 'admin') {
+      updates.role = role;
+    }
 
-    await user.save();
+    const { data: updatedProfile, error } = await supabaseAdmin
+      .from('profiles')
+      .update(updates)
+      .eq('id', req.user.id)
+      .select('*')
+      .single();
+
+    if (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    const userObj = {
+      ...req.user,
+      name: updatedProfile.full_name || req.user.name,
+      role: updatedProfile.role || req.user.role,
+      board: updatedProfile.board,
+      classLevel: updatedProfile.class_level,
+      preferredLanguage: updatedProfile.preferred_language,
+      saarthiMemoryEnabled: updatedProfile.saarthi_memory_enabled
+    };
 
     res.status(200).json({
       message: 'Profile updated successfully',
-      user
+      user: userObj
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Delete User Data (P2-15.2 Right to Erasure)
+ * POST /api/auth/delete-data
+ */
+const deleteUserData = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+
+    // Purge student personal data across all user tables
+    await Promise.allSettled([
+      supabaseAdmin.from('memory_facts').delete().eq('user_id', userId),
+      supabaseAdmin.from('chat_messages').delete().eq('user_id', userId),
+      supabaseAdmin.from('chat_sessions').delete().eq('user_id', userId),
+      supabaseAdmin.from('notes').delete().eq('user_id', userId),
+      supabaseAdmin.from('chunks').delete().eq('user_id', userId),
+      supabaseAdmin.from('attempts').delete().eq('user_id', userId),
+      supabaseAdmin.from('test_results').delete().eq('user_id', userId),
+      supabaseAdmin.from('topic_progress').delete().eq('user_id', userId),
+      supabaseAdmin.from('community_messages').delete().eq('user_id', userId),
+      supabaseAdmin.auth.admin.deleteUser(userId)
+    ]);
+
+    res.json({
+      success: true,
+      message: 'All student personal data and auth credentials have been permanently deleted.'
     });
   } catch (error) {
     next(error);
@@ -155,6 +266,6 @@ module.exports = {
   signup,
   login,
   getProfile,
-  updateProfile
+  updateProfile,
+  deleteUserData
 };
-

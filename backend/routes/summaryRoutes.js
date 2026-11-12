@@ -1,10 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { getLessonSummary } = require('../controllers/summaryController');
-const { optionalAuth } = require('../middleware/auth');
+const summaryController = require('../controllers/summaryController');
+const { optionalAuth, requireAuth } = require('../middleware/auth');
+const { aiRateLimiter } = require('../middleware/rateLimiter');
 
-// POST /api/lessons/:id/summary
-router.post('/lessons/:id/summary', optionalAuth, getLessonSummary);
+// Phase 1 backward-compatible lesson summary
+router.post('/lessons/:id/summary', optionalAuth, aiRateLimiter, summaryController.getLessonSummary);
+
+// Phase 2 Advanced Summaries & Flashcards Engine (P2-4)
+router.post('/summaries/generate', optionalAuth, aiRateLimiter, summaryController.generateAdvancedSummary);
+router.get('/summaries', requireAuth, summaryController.getSavedSummaries);
+router.delete('/summaries/:id', requireAuth, summaryController.deleteSummary);
 
 module.exports = router;
-

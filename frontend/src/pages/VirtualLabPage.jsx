@@ -15,6 +15,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import PendulumSimulation from '../components/PendulumSimulation';
+import TitrationSimulation from '../components/TitrationSimulation';
+import MicroscopeSimulation from '../components/MicroscopeSimulation';
 import { getLab, submitLabQuiz } from '../services/api';
 
 export default function VirtualLabPage() {
@@ -266,23 +268,52 @@ export default function VirtualLabPage() {
               borderRadius: '4px'
             }}
           >
-            Physics 3D Lab
+            Virtual Lab Experiment
           </span>
           <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
-            CBSE Class 10 • Simple Harmonic Motion
+            CBSE Class 10 & 12 Virtual STEM Labs
           </span>
         </div>
 
+        {/* Switch Lab Experiment Pills (P2-9) */}
+        <div style={{ display: 'flex', gap: '8px', margin: '10px 0 14px 0', flexWrap: 'wrap' }}>
+          {[
+            { id: 'simple_pendulum', label: '🧪 Simple Pendulum (Physics)' },
+            { id: 'acid_base_titration', label: '💧 Acid-Base Titration (Chemistry)' },
+            { id: 'compound_microscope', label: '🔬 Compound Microscope (Biology)' }
+          ].map(item => (
+            <Link
+              key={item.id}
+              to={`/labs/${item.id}`}
+              className={`btn ${(lab?.experimentType || effectiveLabId) === item.id ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ width: 'auto', padding: '6px 14px', fontSize: '0.82rem', textDecoration: 'none' }}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+
         <h1 style={{ fontSize: '1.35rem', fontWeight: '700', margin: '4px 0 6px 0', color: '#0F172A' }}>
-          {useHindi && lab?.titleHindi ? lab.titleHindi : (lab?.title || 'Simple Pendulum Experiment')}
+          {useHindi && lab?.titleHindi ? lab.titleHindi : (lab?.title || 'Virtual Lab Experiment')}
         </h1>
         <p style={{ fontSize: '0.88rem', color: '#475569', margin: 0, lineHeight: 1.5 }}>
           {useHindi && lab?.descriptionHindi ? lab.descriptionHindi : lab?.description}
         </p>
       </div>
 
-      {/* 3D Simulation Viewport Card */}
-      <div className="card" style={{ padding: '12px', marginBottom: '14px' }}>
+      {/* Conditionally Render Lab Simulation (P2-9) */}
+      {(lab?.experimentType || effectiveLabId) === 'acid_base_titration' ? (
+        <div style={{ marginBottom: '16px' }}>
+          <TitrationSimulation />
+        </div>
+      ) : (lab?.experimentType || effectiveLabId) === 'compound_microscope' ? (
+        <div style={{ marginBottom: '16px' }}>
+          <MicroscopeSimulation />
+        </div>
+      ) : (
+        <>
+          {/* 3D Simulation Viewport Card */}
+          <div className="card" style={{ padding: '12px', marginBottom: '14px' }}>
         <PendulumSimulation
           length={length}
           mass={mass}
@@ -515,6 +546,8 @@ export default function VirtualLabPage() {
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* Tabs Navigation: Procedure vs Theory vs Quiz */}
       <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid #E2E8F0', marginBottom: '16px' }}>

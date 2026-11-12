@@ -17,6 +17,14 @@ import PracticeTestPage from './pages/PracticeTestPage';
 import ResultsPage from './pages/ResultsPage';
 import VirtualLabPage from './pages/VirtualLabPage';
 import ProfilePage from './pages/ProfilePage';
+import SaarthiPage from './features/mentor/SaarthiPage';
+import NotesPage from './features/notes/NotesPage';
+import VirtualLearningPage from './features/virtual-learning/VirtualLearningPage';
+import TopicViewerPage from './features/virtual-learning/TopicViewerPage';
+import DiagramsExplorerPage from './pages/DiagramsExplorerPage';
+import VideoPlayerPage from './pages/VideoPlayerPage';
+import CommunityPage from './pages/CommunityPage';
+import PrivacyPage from './pages/PrivacyPage';
 
 // Admin Pages (Phase 10)
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -46,9 +54,17 @@ export default function App() {
         <Route path="/lessons/:lessonId" element={<LessonReaderPage />} />
         <Route path="/practice/:chapterId" element={<PracticeTestPage />} />
         <Route path="/results" element={<ResultsPage />} />
+        <Route path="/mentor" element={<SaarthiPage />} />
+        <Route path="/notes" element={<NotesPage />} />
+        <Route path="/virtual-learning" element={<VirtualLearningPage />} />
+        <Route path="/virtual-learning/:topicSlug" element={<TopicViewerPage />} />
+        <Route path="/diagrams" element={<DiagramsExplorerPage />} />
+        <Route path="/videos" element={<VideoPlayerPage />} />
+        <Route path="/community" element={<CommunityPage />} />
         <Route path="/labs" element={<VirtualLabPage />} />
         <Route path="/labs/:labId" element={<VirtualLabPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
       </Route>
 
       {/* Role-Gated Admin Pages (role: 'admin') */}

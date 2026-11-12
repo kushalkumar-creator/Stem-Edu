@@ -1,4 +1,17 @@
-const Diagram = require('../models/Diagram');
+const { supabaseAdmin } = require('../utils/supabaseAdmin');
+
+function formatDiagram(d) {
+  return {
+    _id: d.id,
+    id: d.id,
+    title: d.title,
+    titleHindi: d.title_hindi,
+    subjectCode: d.subject_code,
+    svgViewBox: d.svg_viewbox,
+    elements: d.elements || [],
+    createdAt: d.created_at
+  };
+}
 
 /**
  * GET /api/diagrams
@@ -6,13 +19,19 @@ const Diagram = require('../models/Diagram');
  */
 const getDiagrams = async (req, res, next) => {
   try {
-    const filter = {};
+    let query = supabaseAdmin
+      .from('diagrams')
+      .select('*')
+      .order('created_at', { ascending: true });
+
     if (req.query.subject) {
-      filter.subjectCode = req.query.subject.toLowerCase();
+      query = query.eq('subject_code', req.query.subject.toLowerCase());
     }
 
-    const diagrams = await Diagram.find(filter).sort({ createdAt: 1 });
-    res.status(200).json(diagrams);
+    const { data, error } = await query;
+    if (error) throw error;
+
+    res.status(200).json((data || []).map(formatDiagram));
   } catch (error) {
     next(error);
   }
@@ -26,21 +45,24 @@ const getDiagramById = async (req, res, next) => {
   try {
     const id = req.params.id;
 
-    // Support lookup by ObjectId or subjectCode (e.g. 'physics', 'biology', 'chemistry')
-    let diagram = null;
-    if (id.match(/^[0-9a-fA-F]{24}$/)) {
-      diagram = await Diagram.findById(id);
+    // Check UUID regex
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+    let query = supabaseAdmin.from('diagrams').select('*');
+    if (isUuid) {
+      query = query.eq('id', id);
+    } else {
+      query = query.eq('subject_code', id.toLowerCase());
     }
 
-    if (!diagram) {
-      diagram = await Diagram.findOne({ subjectCode: id.toLowerCase() });
-    }
+    const { data: diagram, error } = await query.maybeSingle();
+    if (error) throw error;
 
     if (!diagram) {
       return res.status(404).json({ message: 'Diagram not found' });
     }
 
-    res.status(200).json(diagram);
+    res.status(200).json(formatDiagram(diagram));
   } catch (error) {
     next(error);
   }
@@ -50,4 +72,3 @@ module.exports = {
   getDiagrams,
   getDiagramById
 };
-

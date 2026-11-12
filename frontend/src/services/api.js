@@ -4,7 +4,8 @@
  * and normalizing API error responses.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const rawUrl = import.meta.env.VITE_API_URL;
+const BASE_URL = rawUrl ? `${rawUrl.replace(/\/api\/?$/, '')}/api` : '/api';
 
 /**
  * Universal request wrapper
