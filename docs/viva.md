@@ -161,3 +161,4 @@ Heavy dependencies like Three.js (`three`), Lucide icons, and KaTeX are split in
 #### Q25: How does the Community Hub integrate with Discord?
 **Answer:**
 The Community Hub provides subject-organized study lounges (`#general-chat`, `#physics-lounge`, `#chemistry-lab`, `#biology-hub`, `#maths-den`) with automated Saarthi AI Bot replies for instant peer doubt assistance, coupled with verified invite links to the official Discord server for voice study groups.
+

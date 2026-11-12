@@ -92,3 +92,4 @@ export const offlineStorage = {
     return typeof navigator !== 'undefined' ? navigator.onLine : true;
   }
 };
+

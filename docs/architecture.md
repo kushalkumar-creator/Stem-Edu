@@ -144,3 +144,4 @@ erDiagram
    - The same scoring algorithm executes client-side during offline MCQ tests, evaluating correct answers and negative marking (-0.25).
 4. **Idempotent Background Sync:**
    - When network connectivity is restored (`window.addEventListener('online')`), the Service Worker triggers `syncQueue` processing, replaying test attempts and newly authored notes to Supabase via upsert idempotency keys.
+

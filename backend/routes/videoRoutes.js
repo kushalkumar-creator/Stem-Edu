@@ -8,3 +8,4 @@ router.get('/:id', videoController.getVideoById);
 router.post('/:id/progress', requireAuth, videoController.saveVideoProgress);
 
 module.exports = router;
+

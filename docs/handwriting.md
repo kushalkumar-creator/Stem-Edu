@@ -51,3 +51,4 @@ $$\theta = (\text{hash}(i) \pmod{100} - 50) \times 0.01^\circ$$
 - **Prompt**: Specifically instructs the vision model to transcribe handwritten English/Hindi STEM notes verbatim, preserving mathematical equations, bullet points, and chemical symbols.
 - **Student Review UI**: Transcribed text is displayed in a split-screen editor where students can make corrections before saving.
 - **RAG Integration**: Once confirmed, the note is ingested into `public.chunks` with metadata `{ sourceType: 'handwritten_note', userId: student.id }`, allowing Saarthi to retrieve it during doubt solving!
+

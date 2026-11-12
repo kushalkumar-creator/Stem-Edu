@@ -38,3 +38,4 @@ While the Service Worker Cache API stores raw HTTP request/response pairs, struc
 - `stem_offline_mcqs`: 15+ multiple choice questions per chapter for offline practice test execution.
 - `stem_offline_notes`: Student personal notes and rendered handwriting canvas pages.
 - `stem_offline_sync_queue`: Test attempts completed while offline, queued to sync back to Supabase once network reconnects (`window.addEventListener('online', ...)`).
+

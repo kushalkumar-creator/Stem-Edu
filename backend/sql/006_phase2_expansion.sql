@@ -112,3 +112,4 @@ values
   ('biology-hub', 'Biology Life Sciences', 'Biology', 'Diagrams, genetics, human physiology, and botanical concepts', true),
   ('maths-den', 'Mathematics Problem Solvers', 'Mathematics', 'Calculus, Vectors, Matrices, and CBSE sample papers', true)
 on conflict (slug) do nothing;
+

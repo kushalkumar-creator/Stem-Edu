@@ -8,3 +8,4 @@ router.get('/channels/:slug/messages', communityController.getMessages);
 router.post('/channels/:slug/messages', requireAuth, communityController.postMessage);
 
 module.exports = router;
+

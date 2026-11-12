@@ -10,3 +10,4 @@ router.delete('/:id', requireAuth, notesController.deleteNote);
 router.post('/ocr', requireAuth, notesController.performOCR);
 
 module.exports = router;
+

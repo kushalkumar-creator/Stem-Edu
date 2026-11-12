@@ -1078,3 +1078,4 @@ seed()
     console.error('Fatal seed error:', err);
     process.exit(1);
   });
+

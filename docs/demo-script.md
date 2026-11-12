@@ -74,3 +74,4 @@ Use this step-by-step walkthrough script during presentations, viva examinations
 2. Refresh the page $\rightarrow$ Show that the App Shell and cached chapter questions load immediately.
 3. Open `/privacy` $\rightarrow$ Show the student privacy policy and Row Level Security guarantees.
 4. Conclude the demonstration.
+

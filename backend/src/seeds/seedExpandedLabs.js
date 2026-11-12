@@ -189,3 +189,4 @@ seed()
     console.error('Fatal lab seed error:', err);
     process.exit(1);
   });
+
